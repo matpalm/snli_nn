@@ -86,7 +86,7 @@ time cat data/snli_1.0_train.jsonl \
 but an unusual set compared to, say, the 1e6 sentence corpus...
 
 token | 1e6 freq | token | snli freq
-- | - | - | -
+----- | -------- | ----- | ---------
 . | 970059 | a | 1441039
 of | 845203 | . | 964030
 and | 645219 | the | 535493
