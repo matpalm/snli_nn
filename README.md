@@ -83,74 +83,37 @@ time cat data/snli_1.0_train.jsonl \
 
 36_391 entries (nice and small!)
 
-but an unusual set ....
+but an unusual set compared to, say, the 1e6 sentence corpus...
 
-```
-head -n30 token_freq.tsv 
-a    1441039
-.    964030
-the  535493
-in   407662
-is   374068
-man  266490
-on   236203
-and  206529
-are  199381
-of   192415
-with 169513
-woman	137794
-two	122247
-people	121335
-,	114538
-to	114072
-at	98790
-wearing	81141
-an	80334
-his	72550
-young	61596
-men	61112
-playing	59568
-girl	59345
-boy	58354
-white	57115
-shirt	56578
-while	56323
-black	55133
-dog	54026
-```
-
-compared to 1e6 sentences dataset..
-
-```
-head -n30 token_freq.tsv
-.    970059
-of   845203
-and  645219
-in   602064
-to   488035
-a    482654
-is   243535
-'    241019
-was  239712
--lrb-	237887
--rrb-	237400
-`	212268
-as	197400
-for	185954
-by	162542
-with	162149
-on	160348
-that	150584
-'s	148546
-''	124864
-``	122000
-from	110950
-his	109739
-he	109146
-it	108952
-at	100304
-are	93788
-an	87625
-were	85952
-which	83635
-```
+token | 1e6 freq | token | snli freq
+- | - | - | -
+. | 970059 | a | 1441039
+of | 845203 | . | 964030
+and | 645219 | the | 535493
+in | 602064 | in | 407662
+to | 488035 | is | 374068
+a | 482654 | man | 266490
+is | 243535 | on | 236203
+' | 241019 | and | 206529
+was | 239712 | are | 199381
+-lrb- | 237887 | of | 192415
+-rrb- | 237400 | with | 169513
+` | 212268 | woman | 137794
+as | 197400 | two | 122247
+for | 185954 | people | 121335
+by | 162542 | , | 114538
+with | 162149 | to | 114072
+on | 160348 | at | 98790
+that | 150584 | wearing | 81141
+'s | 148546 | an | 80334
+'' | 124864 | his | 72550
+`` | 122000 | young | 61596
+from | 110950 | men | 61112
+his | 109739 | playing | 59568
+he | 109146 | girl | 59345
+it | 108952 | boy | 58354
+at | 100304 | white | 57115
+are | 93788 | shirt | 56578
+an | 87625 | while | 56323
+were | 85952 | black | 55133
+which | 83635 | dog | 54026
