@@ -2,15 +2,6 @@
 
 hacking with the Stanford Natural Language Inference corpus http://nlp.stanford.edu/projects/snli/
 
-# vocab
-
-time cat data/snli_1.0_train.jsonl \
- | ./parse_distinct_tokens.py \
- | sort -k2 -nr \
- > token_freq.tsv
-
-36_391 entries (nice and small!)
-
 # simple baseline
 
 features...
@@ -81,3 +72,85 @@ dev confusion (accuracy)
 (6m 6s)
 ```
 
+# vocab check
+
+```
+time cat data/snli_1.0_train.jsonl \
+ | ./parse_distinct_tokens.py \
+ | sort -k2 -nr \
+ > token_freq.tsv
+```
+
+36_391 entries (nice and small!)
+
+but an unusual set ....
+
+```
+head -n30 token_freq.tsv 
+a    1441039
+.    964030
+the  535493
+in   407662
+is   374068
+man  266490
+on   236203
+and  206529
+are  199381
+of   192415
+with 169513
+woman	137794
+two	122247
+people	121335
+,	114538
+to	114072
+at	98790
+wearing	81141
+an	80334
+his	72550
+young	61596
+men	61112
+playing	59568
+girl	59345
+boy	58354
+white	57115
+shirt	56578
+while	56323
+black	55133
+dog	54026
+```
+
+compared to 1e6 sentences dataset..
+
+```
+head -n30 token_freq.tsv
+.    970059
+of   845203
+and  645219
+in   602064
+to   488035
+a    482654
+is   243535
+'    241019
+was  239712
+-lrb-	237887
+-rrb-	237400
+`	212268
+as	197400
+for	185954
+by	162542
+with	162149
+on	160348
+that	150584
+'s	148546
+''	124864
+``	122000
+from	110950
+his	109739
+he	109146
+it	108952
+at	100304
+are	93788
+an	87625
+were	85952
+which	83635
+```
