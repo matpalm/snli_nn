@@ -2,6 +2,21 @@
 
 hacking with the Stanford Natural Language Inference corpus http://nlp.stanford.edu/projects/snli/
 
+# tldr results
+
+( all for 100 dev )
+
+model | # train | dev accuracy
+----- | ----- | --------
+log_reg_baseline.py | 100 | 0.35
+log_reg_baseline.py | 1K | 0.45
+log_reg_baseline.py | 10K | 0.56
+log_reg_baseline.py | 500K+ (all) | 0.67
+nn_baseline.py | 100 | 0.39
+nn_baseline.py | 1K | 0.47
+nn_baseline.py | 10K | 0.58
+nn_baseline.py | 500K_ (all) | 0.63
+
 # simple baseline
 
 features...
@@ -12,7 +27,7 @@ features...
 ## 100 train, 100 dev
 
 ```
-$ ./log_reg_baseline.py --num-from-train=100
+$ ./log_reg_baseline.py --num-from-train=100 --num-from-dev=100
 train_ignored 0 dev_ignored 1
 train confusion
 [[32  0  0]
@@ -27,7 +42,7 @@ dev confusion (accuracy)
 ## 1_000 train, 100 dev
 
 ```
-$ ./log_reg_baseline.py --num-from-train=1000
+$ ./log_reg_baseline.py --num-from-train=1000 --num-from-dev=100
 train_ignored 2 dev_ignored 1
 train confusion
 [[312  10  11]
@@ -42,7 +57,7 @@ dev confusion (accuracy)
 ## 10_000 train, 100 dev
 
 ```
-./log_reg_baseline.py
+$ ./log_reg_baseline.py --num-from-train=10000 --num-from-dev=100
 train_ignored 12 dev_ignored 1
 train confusion
 [[2671  277  386]
@@ -57,7 +72,7 @@ dev confusion (accuracy)
 ## all train, 100 dev
 
 ```
-$ time ./log_reg_baseline.py
+$ time ./log_reg_baseline.py --num-from-train=-1 --num-from-dev=100
 
 |train| 549367 train_ignored 785 dev_ignored 1
 train confusion
@@ -71,6 +86,13 @@ dev confusion (accuracy)
 
 (6m 6s)
 ```
+
+# nn_baseline
+
+```
+$ ./nn_baseline.py --embedding-dim=20 --hidden-dim=20 --learning-rate=0.01 --num-from-train=100 --num-from-dev=100 --num-epochs=10
+
+
 
 # vocab check
 
