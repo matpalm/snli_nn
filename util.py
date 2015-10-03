@@ -2,6 +2,7 @@ from collections import Counter
 import json
 import numpy as np
 import theano
+import sys
 
 def tokens_in_parse(parse):
     for token in parse.split(" "):
@@ -42,16 +43,26 @@ def load_data(dataset, vocab, max_egs=None, update_vocab=True):
             break
     return x, y, stats
 
-def sharedMatrix(n_rows, n_cols, name, orthogonal_init=True):
+def shared(values, name):
+    return theano.shared(np.asarray(values, dtype='float32'), name=name, borrow=True)
+
+def sharedMatrix(n_rows, n_cols, name, scale=0.05, orthogonal_init=True):
     if orthogonal_init and n_rows < n_cols:
         print >>sys.stderr, "warning: can't do orthogonal init of %s, since n_rows (%s) < n_cols (%s)" % (name, n_rows, n_cols)
         orthogonal_init = False
-    w = np.random.randn(n_rows, n_cols)
+    w = np.random.randn(n_rows, n_cols) * scale
     if orthogonal_init:
         w, _s, _v = np.linalg.svd(w, full_matrices=False)
-    return theano.shared(np.asarray(w, dtype='float32'), name=name, borrow=True)
+    return shared(w, name)
+
+def eye(size, scale=1):
+    return np.eye(size) * scale
+
+def zeros(shape):
+    return np.zeros(shape)
 
 def accuracy(confusion):
-    return np.sum(confusion * np.identity(3)) / np.sum(confusion)
+    # ratio of on diagonal vs not on diagonal
+    return np.sum(confusion * np.identity(len(confusion))) / np.sum(confusion)
 
 

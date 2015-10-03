@@ -60,7 +60,7 @@ final_s2_state = s2_rnn.final_state_given(s2_idxs, h0)
 # concat, do a final linear combo and apply softmax
 concatted_state = T.concatenate([final_s1_state, final_s2_state])
 Wy = util.sharedMatrix(NUM_LABELS, 2 * opts.hidden_dim, 'Wy', False)
-by = util.sharedMatrix(1, NUM_LABELS, 'by', False)
+by = util.shared(util.zeros((1, NUM_LABELS)), 'by')
 prob_y = T.nnet.softmax(T.dot(Wy, concatted_state) + by)
 pred_y = T.argmax(prob_y, axis=1)
 
@@ -105,7 +105,14 @@ def test_on_dev_set():
         actuals.append(y)
         predicteds.append(pred_y)
     dev_c = confusion_matrix(actuals, predicteds)
-    print "dev confusion\n %s (%s)" % (dev_c, util.accuracy(dev_c))
+    dev_c_accuracy = util.accuracy(dev_c)
+    print "dev confusion\n %s (%s)" % (dev_c, dev_c_accuracy)
+    s1_wb_norm = np.linalg.norm(s1_rnn.Wb.get_value())
+    s2_wb_norm = np.linalg.norm(s2_rnn.Wb.get_value())
+    print "s1.Wb", s1_rnn.Wb.get_value()
+    print "s2.Wb", s2_rnn.Wb.get_value()
+    print "STATS\t%s" % "\t".join(map(str, [dev_c_accuracy, s1_wb_norm, s2_wb_norm]))
+    sys.stdout.flush()
 
 epoch = 0
 n_egs_since_dev_test = 0

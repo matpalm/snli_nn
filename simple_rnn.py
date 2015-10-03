@@ -5,17 +5,20 @@ import theano.tensor as T
 
 class SimpleRnn(object):
     def __init__(self, n_in, n_embedding, n_hidden, orthogonal_init):
-        self.Wx = util.sharedMatrix(n_in, n_embedding, 'Wx', orthogonal_init)
-        self.Wrec = util.sharedMatrix(n_hidden, n_embedding, 'Wrec', orthogonal_init)
+        self.Wx = util.sharedMatrix(n_in, n_embedding, 'Wx', orthogonal_init=orthogonal_init)
+        self.Whh = util.sharedMatrix(n_hidden, n_hidden, 'Whh', orthogonal_init=orthogonal_init)
+#        self.Whh = util.shared(util.eye(n_hidden), 'Whh')
+        self.Whe = util.sharedMatrix(n_hidden, n_embedding, 'Whe', orthogonal_init=orthogonal_init)
+        self.Wb = util.shared(util.zeros((n_hidden,)), 'Wb')
 
     def params(self):
-        return [self.Wx, self.Wrec] #, self.Wy]
+        return [self.Wx, self.Whh, self.Whe, self.Wb]
 
     def recurrent_step(self, x_t, h_t_minus_1):
         # calc new hidden state; elementwise add of embedded input &
         # recurrent weights dot _last_ hiddenstate
         embedding = self.Wx[x_t]
-        h_t = T.tanh(h_t_minus_1 + T.dot(self.Wrec, embedding))
+        h_t = T.tanh(T.dot(self.Whh, h_t_minus_1) + T.dot(self.Whe, embedding) + self.Wb)
         # return next hidden state
         return [h_t, h_t]
 
