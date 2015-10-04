@@ -9,6 +9,7 @@ import time
 import theano
 import theano.tensor as T
 import util
+from updates import vanilla, rmsprop
 from vocab import Vocab
 
 parser = argparse.ArgumentParser()
@@ -68,25 +69,10 @@ model_params = s1_rnn.params() + s2_rnn.params() + [Wy, by]
 
 gradients = T.grad(cost=cross_entropy, wrt=model_params)
 
-def vanilla(params, gradients):
-    return [(param, param - opts.learning_rate * gradient) for param, gradient in zip(params, gradients)]
-
-def rmsprop(params, gradients):
-    updates = []
-    for param_t0, gradient in zip(params, gradients):
-        # rmsprop see slide 29 of http://www.cs.toronto.edu/~tijmen/csc321/slides/lecture_slides_lec6.pdf
-        # first the mean_sqr exponential moving average
-        mean_sqr_t0 = theano.shared(np.zeros(param_t0.get_value().shape, dtype=param_t0.get_value().dtype))  # zeros in same shape are param
-        mean_sqr_t1 = 0.9 * mean_sqr_t0 + 0.1 * gradient**2
-        updates.append((mean_sqr_t0, mean_sqr_t1))
-        # update param surpressing gradient by this average
-        param_t1 = param_t0 - opts.learning_rate * (gradient / T.sqrt(mean_sqr_t1 + 1e-10))
-        updates.append((param_t0, param_t1))
-    return updates
-
 update_fn = globals().get(opts.adaptive_learning_rate_fn)
-updates = update_fn(model_params, gradients)
+updates = update_fn(model_params, gradients, opts.learning_rate)
 
+print >>sys.stderr, "compiling"
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
                            outputs=[],
                            updates=updates)
@@ -110,6 +96,7 @@ def test_on_dev_set():
     print "STATS\t%s" % "\t".join(map(str, [dev_c_accuracy, s1_wb_norm, s2_wb_norm]))
     sys.stdout.flush()
 
+print >>sys.stderr, "training"
 epoch = 0
 n_egs_since_dev_test = 0
 while epoch != opts.num_epochs:
