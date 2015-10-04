@@ -22,8 +22,9 @@ class SimpleRnn(object):
         # return next hidden state
         return [h_t, h_t]
 
-    def final_state_given(self, x, h0):
+    def final_state_given(self, x, h0, go_backwards=False):
         [_h_t, h_t], _ = theano.scan(fn=self.recurrent_step,
+                                     go_backwards=go_backwards,
                                      sequences=[x],
                                      outputs_info=[h0, None])
         return h_t[-1]

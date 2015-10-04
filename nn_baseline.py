@@ -16,7 +16,7 @@ parser.add_argument("--train-set", default="data/snli_1.0_train.jsonl")
 parser.add_argument("--num-from-train", default=-1, type=int)
 parser.add_argument("--dev-set", default="data/snli_1.0_dev.jsonl")
 parser.add_argument("--num-from-dev", default=-1, type=int)
-parser.add_argument("--dev-run-freq", default=1000, type=int)
+parser.add_argument("--dev-run-freq", default=-1, type=int)
 parser.add_argument("--num-epochs", default=-1, type=int)
 parser.add_argument('--learning-rate', default=0.05, type=float, help='learning rate')
 parser.add_argument('--adaptive-learning-rate-fn', default='vanilla', help='vanilla (sgd) or rmsprop')
@@ -28,7 +28,6 @@ print >>sys.stderr, opts
 NUM_LABELS = 3
 
 # slurp training data, including converting of tokens -> ids
-print >>sys.stderr, ">loading"
 vocab = Vocab()
 train_x, train_y, train_stats = util.load_data(opts.train_set, vocab,
                                                update_vocab=True,
@@ -38,7 +37,6 @@ dev_x, dev_y, dev_stats = util.load_data(opts.dev_set, vocab,
                                          update_vocab=False,
                                          max_egs=int(opts.num_from_dev))
 print >>sys.stderr, "dev_stats", len(dev_x), dev_stats
-print >>sys.stderr, "<loaded"
 
 # input/output vars
 s1_idxs = T.ivector('s1')  # sequence for sentence one
@@ -89,13 +87,11 @@ def rmsprop(params, gradients):
 update_fn = globals().get(opts.adaptive_learning_rate_fn)
 updates = update_fn(model_params, gradients)
 
-print >>sys.stderr, ">compiling"
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
                            outputs=[],
                            updates=updates)
 test_fn = theano.function(inputs=[s1_idxs, s2_idxs],
                           outputs=[pred_y])
-print >>sys.stderr, "<compiling"
 
 def test_on_dev_set():
     actuals = []

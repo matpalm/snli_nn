@@ -2,6 +2,17 @@
 
 hacking with the Stanford Natural Language Inference corpus http://nlp.stanford.edu/projects/snli/
 
+TODOS
+
+* inc subtensor for E  (prove it's a prob by running 1 epoch small dev test on larger & larger training sets (=> larger E)
+* bidir
+* change output so multiple runs easier (eg dump hyper params with stats)
+* preloading of data
+* grus
+* unrolling?
+* attention
+
+
 # tldr results
 
 ( all for 100 dev )
