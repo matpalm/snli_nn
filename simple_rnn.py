@@ -13,19 +13,21 @@ class SimpleRnn(object):
         self.Wb = util.shared(util.zeros((n_hidden,)), 'Wb')
 
     def set_idxs(self, idxs):
-        self.idxs = idxs
-
-    def params(self):
-        return [self.Wx, self.Whh, self.Whe, self.Wb]
+        self.sequence_embeddings = self.Wx[idxs]
 
     def updates_wrt_cost(self, cost, learning_rate):
-        gradients = T.grad(cost=cost, wrt=self.params())
-        return vanilla(self.params(), gradients, learning_rate)
+        # calculate dense updates
+        params = [self.Whh, self.Whe, self.Wb]
+        gradients = T.grad(cost=cost, wrt=params)
+        updates = vanilla(params, gradients, learning_rate)
+        # calculate a sparse update for embeddings
+        gradient = T.grad(cost=cost, wrt=self.sequence_embeddings)
+        updates += [(self.Wx, T.inc_subtensor(self.sequence_embeddings, -learning_rate * gradient))]
+        return updates
 
-    def recurrent_step(self, x_t, h_t_minus_1):
+    def recurrent_step(self, embedding, h_t_minus_1):
         # calc new hidden state; elementwise add of embedded input &
         # recurrent weights dot _last_ hiddenstate
-        embedding = self.Wx[x_t]
         h_t = T.tanh(T.dot(self.Whh, h_t_minus_1) + T.dot(self.Whe, embedding) + self.Wb)
         # return next hidden state
         return [h_t, h_t]
@@ -33,6 +35,6 @@ class SimpleRnn(object):
     def final_state_given(self, h0, go_backwards=False):
         [_h_t, h_t], _ = theano.scan(fn=self.recurrent_step,
                                      go_backwards=go_backwards,
-                                     sequences=[self.idxs],
+                                     sequences=[self.sequence_embeddings],
                                      outputs_info=[h0, None])
         return h_t[-1]

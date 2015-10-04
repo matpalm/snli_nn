@@ -29,16 +29,22 @@ print >>sys.stderr, opts
 
 NUM_LABELS = 3
 
+def dts():
+    return time.strftime("%Y-%m-%d %H:%M:%S")
+
+def log(s):
+    print >>sys.stderr, dts(), s
+
 # slurp training data, including converting of tokens -> ids
 vocab = Vocab()
 train_x, train_y, train_stats = util.load_data(opts.train_set, vocab,
                                                update_vocab=True,
                                                max_egs=int(opts.num_from_train))
-print >>sys.stderr, "train_stats", len(train_x), train_stats
+log("train_stats %s %s" % (len(train_x), train_stats))
 dev_x, dev_y, dev_stats = util.load_data(opts.dev_set, vocab,
                                          update_vocab=False,
                                          max_egs=int(opts.num_from_dev))
-print >>sys.stderr, "dev_stats", len(dev_x), dev_stats
+log("dev_stats %s %s" % (len(dev_x), dev_stats))
 
 # input/output vars
 s1_idxs = T.ivector('s1')  # sequence for sentence one
@@ -69,7 +75,7 @@ updates = s1_rnn.updates_wrt_cost(cross_entropy, opts.learning_rate) + \
           s2_rnn.updates_wrt_cost(cross_entropy, opts.learning_rate) + \
           concat_with_softmax.updates_wrt_cost(cross_entropy, opts.learning_rate)
 
-print >>sys.stderr, "compiling"
+log("compiling")
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
                            outputs=[],
                            updates=updates)
@@ -79,29 +85,30 @@ test_fn = theano.function(inputs=[s1_idxs, s2_idxs],
 def test_on_dev_set():
     actuals = []
     predicteds  = []
-    for n, ((s1, s2), y) in enumerate(zip(dev_x, dev_y)):
+    for (s1, s2), y in zip(dev_x, dev_y):
         pred_y, = test_fn(s1, s2)
         actuals.append(y)
         predicteds.append(pred_y)
     dev_c = confusion_matrix(actuals, predicteds)
     dev_c_accuracy = util.accuracy(dev_c)
     print "dev confusion\n %s (%s)" % (dev_c, dev_c_accuracy)
-    s1_wb_norm = np.linalg.norm(s1_rnn.Wb.get_value())
-    s2_wb_norm = np.linalg.norm(s2_rnn.Wb.get_value())
-    print "s1.Wb", s1_rnn.Wb.get_value()
-    print "s2.Wb", s2_rnn.Wb.get_value()
-    print "STATS\t%s" % "\t".join(map(str, [dev_c_accuracy, s1_wb_norm, s2_wb_norm]))
-    sys.stdout.flush()
+    return dev_c_accuracy
 
-print >>sys.stderr, "training"
+log("training")
 epoch = 0
 n_egs_since_dev_test = 0
+n_egs_trained = 0
 while epoch != opts.num_epochs:
-    print ">epoch %s (%s)" % (epoch, time.strftime("%Y-%m-%d %H:%M:%S"))
+    log(">epoch %s" % epoch)
     for (s1, s2), y in zip(train_x, train_y):
         train_fn(s1, s2, [y])
+        n_egs_trained += 1
         n_egs_since_dev_test += 1
         if n_egs_since_dev_test == opts.dev_run_freq:
-            test_on_dev_set()
+            dev_accuracy = test_on_dev_set()
+            print "STATS\t%s" % "\t".join(map(str, [epoch, n_egs_trained, dev_accuracy]))
+            sys.stdout.flush()
             n_egs_since_dev_test = 0
     epoch += 1
+
+log("done")
