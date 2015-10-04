@@ -2,6 +2,7 @@ import numpy as np
 import util
 import theano
 import theano.tensor as T
+from updates import vanilla, rmsprop
 
 class SimpleRnn(object):
     def __init__(self, n_in, n_embedding, n_hidden, orthogonal_init):
@@ -13,6 +14,10 @@ class SimpleRnn(object):
 
     def params(self):
         return [self.Wx, self.Whh, self.Whe, self.Wb]
+
+    def updates_wrt_cost(self, cost, learning_rate):
+        gradients = T.grad(cost=cost, wrt=self.params())
+        return vanilla(self.params(), gradients, learning_rate)
 
     def recurrent_step(self, x_t, h_t_minus_1):
         # calc new hidden state; elementwise add of embedded input &

@@ -61,14 +61,11 @@ final_s2_state = s2_rnn.final_state_given(s2_idxs, h0)
 concat_with_softmax = ConcatWithSoftmax([final_s1_state, final_s2_state], NUM_LABELS, opts.hidden_dim)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
+# calc xent and get each layer to provide updates
 cross_entropy = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
-
-model_params = s1_rnn.params() + s2_rnn.params() + concat_with_softmax.params()
-
-gradients = T.grad(cost=cross_entropy, wrt=model_params)
-
-update_fn = globals().get(opts.adaptive_learning_rate_fn)
-updates = update_fn(model_params, gradients, opts.learning_rate)
+updates = s1_rnn.updates_wrt_cost(cross_entropy, opts.learning_rate) + \
+          s2_rnn.updates_wrt_cost(cross_entropy, opts.learning_rate) + \
+          concat_with_softmax.updates_wrt_cost(cross_entropy, opts.learning_rate)
 
 print >>sys.stderr, "compiling"
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
