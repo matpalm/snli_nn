@@ -12,6 +12,9 @@ class SimpleRnn(object):
         self.Whe = util.sharedMatrix(n_hidden, n_embedding, 'Whe', orthogonal_init=orthogonal_init)
         self.Wb = util.shared(util.zeros((n_hidden,)), 'Wb')
 
+    def set_idxs(self, idxs):
+        self.idxs = idxs
+
     def params(self):
         return [self.Wx, self.Whh, self.Whe, self.Wb]
 
@@ -27,9 +30,9 @@ class SimpleRnn(object):
         # return next hidden state
         return [h_t, h_t]
 
-    def final_state_given(self, x, h0, go_backwards=False):
+    def final_state_given(self, h0, go_backwards=False):
         [_h_t, h_t], _ = theano.scan(fn=self.recurrent_step,
                                      go_backwards=go_backwards,
-                                     sequences=[x],
+                                     sequences=[self.idxs],
                                      outputs_info=[h0, None])
         return h_t[-1]

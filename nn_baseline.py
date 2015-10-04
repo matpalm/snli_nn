@@ -51,11 +51,13 @@ h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow
 # build rnn for pass over s1
 config = (vocab.size(), opts.embedding_dim, opts.hidden_dim, True)
 s1_rnn = SimpleRnn(*config)
-final_s1_state = s1_rnn.final_state_given(s1_idxs, h0)
+s1_rnn.set_idxs(s1_idxs)
+final_s1_state = s1_rnn.final_state_given(h0)
 
 # build another rnn for pass over s2
 s2_rnn = SimpleRnn(*config)
-final_s2_state = s2_rnn.final_state_given(s2_idxs, h0)
+s2_rnn.set_idxs(s2_idxs)
+final_s2_state = s2_rnn.final_state_given(h0)
 
 # concat, do a final linear combo and apply softmax
 concat_with_softmax = ConcatWithSoftmax([final_s1_state, final_s2_state], NUM_LABELS, opts.hidden_dim)
