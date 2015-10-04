@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+from concat_with_softmax import ConcatWithSoftmax
 import json
 import numpy as np
 from simple_rnn import SimpleRnn
@@ -57,15 +58,12 @@ s2_rnn = SimpleRnn(*config)
 final_s2_state = s2_rnn.final_state_given(s2_idxs, h0)
 
 # concat, do a final linear combo and apply softmax
-concatted_state = T.concatenate([final_s1_state, final_s2_state])
-Wy = util.sharedMatrix(NUM_LABELS, 2 * opts.hidden_dim, 'Wy', False)
-by = util.shared(util.zeros((1, NUM_LABELS)), 'by')
-prob_y = T.nnet.softmax(T.dot(Wy, concatted_state) + by)
-pred_y = T.argmax(prob_y, axis=1)
+concat_with_softmax = ConcatWithSoftmax([final_s1_state, final_s2_state], NUM_LABELS, opts.hidden_dim)
+prob_y, pred_y = concat_with_softmax.prob_pred()
 
 cross_entropy = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
 
-model_params = s1_rnn.params() + s2_rnn.params() + [Wy, by]
+model_params = s1_rnn.params() + s2_rnn.params() + concat_with_softmax.params()
 
 gradients = T.grad(cost=cross_entropy, wrt=model_params)
 
