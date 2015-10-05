@@ -20,6 +20,7 @@ parser.add_argument("--dev-set", default="data/snli_1.0_dev.jsonl")
 parser.add_argument("--num-from-dev", default=-1, type=int)
 parser.add_argument("--dev-run-freq", default=-1, type=int)
 parser.add_argument("--num-epochs", default=-1, type=int)
+parser.add_argument("--max-run-time-sec", default=-1, type=int)
 parser.add_argument('--learning-rate', default=0.05, type=float, help='learning rate')
 parser.add_argument('--adaptive-learning-rate-fn', default='vanilla', help='vanilla (sgd) or rmsprop')
 parser.add_argument('--embedding-dim', default=3, type=int, help='embedding node dimensionality')
@@ -94,21 +95,33 @@ def test_on_dev_set():
     print "dev confusion\n %s (%s)" % (dev_c, dev_c_accuracy)
     return dev_c_accuracy
 
+def stats(d):
+    d['dts_h'] = dts()
+    d['dts'] = int(time.time())
+    print "STATS\t%s" % json.dumps(d)
+    sys.stdout.flush()
+
 log("training")
 epoch = 0
-n_egs_since_dev_test = 0
 n_egs_trained = 0
+training_early_stop_time = opts.max_run_time_sec + time.time()
+run = "RUN_%s" % int(time.time())
 while epoch != opts.num_epochs:
     log(">epoch %s" % epoch)
     for (s1, s2), y in zip(train_x, train_y):
         train_fn(s1, s2, [y])
         n_egs_trained += 1
-        n_egs_since_dev_test += 1
-        if n_egs_since_dev_test == opts.dev_run_freq:
+
+        early_stop = False
+        if opts.max_run_time_sec != -1 and time.time() > training_early_stop_time:
+            early_stop = True
+        if n_egs_trained % opts.dev_run_freq == 0 or early_stop:
             dev_accuracy = test_on_dev_set()
-            print "STATS\t%s" % "\t".join(map(str, [epoch, n_egs_trained, dev_accuracy]))
-            sys.stdout.flush()
-            n_egs_since_dev_test = 0
+            stats({"run": run, "epoch": epoch, "n_egs_trained": n_egs_trained,
+                   "e_dim": opts.embedding_dim, "h_dim": opts.hidden_dim,
+                   "lr": opts.learning_rate, "dev_acc": dev_accuracy})
+        if early_stop:
+            exit(0)
     epoch += 1
 
 log("done")
