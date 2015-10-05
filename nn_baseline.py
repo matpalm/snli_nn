@@ -25,6 +25,7 @@ parser.add_argument('--learning-rate', default=0.05, type=float, help='learning 
 parser.add_argument('--adaptive-learning-rate-fn', default='vanilla', help='vanilla (sgd) or rmsprop')
 parser.add_argument('--embedding-dim', default=3, type=int, help='embedding node dimensionality')
 parser.add_argument('--hidden-dim', default=4, type=int, help='hidden node dimensionality')
+parser.add_argument('--bidirectional', action='store_true', help='whether to build bidirectional rnns for s1 & s2')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
@@ -55,26 +56,25 @@ actual_y = T.ivector('y')  # single for sentence pair label; 0, 1 or 2
 # shared initial zero hidden state
 h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
 
-# build rnn for pass over s1
-config = (vocab.size(), opts.embedding_dim, opts.hidden_dim, True)
-s1_rnn = SimpleRnn(*config)
-s1_rnn.set_idxs(s1_idxs)
-final_s1_state = s1_rnn.final_state_given(h0)
+# build seperate rnns for passes over s1/s2 with optional bidirectional passes.
+def rnn(idxs, forwards):
+    return SimpleRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim, True, idxs, forwards)
 
-# build another rnn for pass over s2
-s2_rnn = SimpleRnn(*config)
-s2_rnn.set_idxs(s2_idxs)
-final_s2_state = s2_rnn.final_state_given(h0)
+rnns = [rnn(s1_idxs, forwards=True), rnn(s2_idxs, forwards=True)]
+if opts.bidirectional:
+    rnns += [rnn(s1_idxs, forwards=False), rnn(s2_idxs, forwards=False)]
+final_rnn_states = [rnn.final_state_given(h0) for rnn in rnns]
 
-# concat, do a final linear combo and apply softmax
-concat_with_softmax = ConcatWithSoftmax([final_s1_state, final_s2_state], NUM_LABELS, opts.hidden_dim)
+# concat final states of rnns, do a final linear combo and apply softmax for prediction.
+concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
 # calc xent and get each layer to provide updates
 cross_entropy = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
-updates = s1_rnn.updates_wrt_cost(cross_entropy, opts.learning_rate) + \
-          s2_rnn.updates_wrt_cost(cross_entropy, opts.learning_rate) + \
-          concat_with_softmax.updates_wrt_cost(cross_entropy, opts.learning_rate)
+updates = []
+for rnn in rnns:
+    updates += rnn.updates_wrt_cost(cross_entropy, opts.learning_rate)
+updates += concat_with_softmax.updates_wrt_cost(cross_entropy, opts.learning_rate)
 
 log("compiling")
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
@@ -95,9 +95,10 @@ def test_on_dev_set():
     print "dev confusion\n %s (%s)" % (dev_c, dev_c_accuracy)
     return dev_c_accuracy
 
+START_TIME = int(time.time())
 def stats(d):
     d['dts_h'] = dts()
-    d['dts'] = int(time.time())
+    d['elapsed_time'] = int(time.time()) - START_TIME
     print "STATS\t%s" % json.dumps(d)
     sys.stdout.flush()
 
@@ -105,13 +106,11 @@ log("training")
 epoch = 0
 n_egs_trained = 0
 training_early_stop_time = opts.max_run_time_sec + time.time()
-run = "RUN_%s" % int(time.time())
+run = "RUN_%s" % START_TIME
 while epoch != opts.num_epochs:
-    log(">epoch %s" % epoch)
     for (s1, s2), y in zip(train_x, train_y):
         train_fn(s1, s2, [y])
         n_egs_trained += 1
-
         early_stop = False
         if opts.max_run_time_sec != -1 and time.time() > training_early_stop_time:
             early_stop = True
@@ -119,9 +118,8 @@ while epoch != opts.num_epochs:
             dev_accuracy = test_on_dev_set()
             stats({"run": run, "epoch": epoch, "n_egs_trained": n_egs_trained,
                    "e_dim": opts.embedding_dim, "h_dim": opts.hidden_dim,
-                   "lr": opts.learning_rate, "dev_acc": dev_accuracy})
+                   "lr": opts.learning_rate, "dev_acc": dev_accuracy,
+                   "bidir": opts.bidirectional})
         if early_stop:
             exit(0)
     epoch += 1
-
-log("done")
