@@ -78,7 +78,7 @@ updates += concat_with_softmax.updates_wrt_cost(cross_entropy, opts.learning_rat
 
 log("compiling")
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
-                           outputs=[],
+                           outputs=[cross_entropy],
                            updates=updates)
 test_fn = theano.function(inputs=[s1_idxs, s2_idxs],
                           outputs=[pred_y])
@@ -108,8 +108,10 @@ n_egs_trained = 0
 training_early_stop_time = opts.max_run_time_sec + time.time()
 run = "RUN_%s" % START_TIME
 while epoch != opts.num_epochs:
+    costs = []
     for (s1, s2), y in zip(train_x, train_y):
-        train_fn(s1, s2, [y])
+        cost, = train_fn(s1, s2, [y])
+        costs.append(cost)
         n_egs_trained += 1
         early_stop = False
         if opts.max_run_time_sec != -1 and time.time() > training_early_stop_time:
@@ -119,7 +121,9 @@ while epoch != opts.num_epochs:
             stats({"run": run, "epoch": epoch, "n_egs_trained": n_egs_trained,
                    "e_dim": opts.embedding_dim, "h_dim": opts.hidden_dim,
                    "lr": opts.learning_rate, "dev_acc": dev_accuracy,
+                   "train_cost": {"mean": float(np.mean(costs)), "sd": float(np.std(costs))},
                    "bidir": opts.bidirectional})
+            costs = []
         if early_stop:
             exit(0)
     epoch += 1
