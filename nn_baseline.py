@@ -71,29 +71,31 @@ prob_y, pred_y = concat_with_softmax.prob_pred()
 
 # calc xent and get each layer to provide updates
 cross_entropy = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
+layers = rnns + [concat_with_softmax]
 updates = []
-for rnn in rnns:
-    updates += rnn.updates_wrt_cost(cross_entropy, opts.learning_rate)
-updates += concat_with_softmax.updates_wrt_cost(cross_entropy, opts.learning_rate)
+for layer in layers:
+    updates.extend(layer.updates_wrt_cost(cross_entropy, opts.learning_rate))
 
 log("compiling")
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
                            outputs=[cross_entropy],
                            updates=updates)
-test_fn = theano.function(inputs=[s1_idxs, s2_idxs],
-                          outputs=[pred_y])
+test_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
+                          outputs=[pred_y, cross_entropy])
 
 def test_on_dev_set():
     actuals = []
     predicteds  = []
+    costs = []
     for (s1, s2), y in zip(dev_x, dev_y):
-        pred_y, = test_fn(s1, s2)
+        pred_y, cost = test_fn(s1, s2, [y])
         actuals.append(y)
         predicteds.append(pred_y)
+        costs.append(cost)
     dev_c = confusion_matrix(actuals, predicteds)
     dev_c_accuracy = util.accuracy(dev_c)
     print "dev confusion\n %s (%s)" % (dev_c, dev_c_accuracy)
-    return dev_c_accuracy
+    return dev_c_accuracy, {"mean": float(np.mean(costs)), "sd": float(np.std(costs))}
 
 START_TIME = int(time.time())
 def stats(d):
@@ -117,11 +119,12 @@ while epoch != opts.num_epochs:
         if opts.max_run_time_sec != -1 and time.time() > training_early_stop_time:
             early_stop = True
         if n_egs_trained % opts.dev_run_freq == 0 or early_stop:
-            dev_accuracy = test_on_dev_set()
+            dev_accuracy, dev_cost_stats = test_on_dev_set()
             stats({"run": run, "epoch": epoch, "n_egs_trained": n_egs_trained,
                    "e_dim": opts.embedding_dim, "h_dim": opts.hidden_dim,
                    "lr": opts.learning_rate, "dev_acc": dev_accuracy,
                    "train_cost": {"mean": float(np.mean(costs)), "sd": float(np.std(costs))},
+                   "dev_cost": dev_cost_stats,
                    "bidir": opts.bidirectional})
             costs = []
         if early_stop:
