@@ -26,6 +26,7 @@ parser.add_argument('--adaptive-learning-rate-fn', default='vanilla', help='vani
 parser.add_argument('--embedding-dim', default=3, type=int, help='embedding node dimensionality')
 parser.add_argument('--hidden-dim', default=4, type=int, help='hidden node dimensionality')
 parser.add_argument('--bidirectional', action='store_true', help='whether to build bidirectional rnns for s1 & s2')
+parser.add_argument('--tied-embeddings', action='store_true', help='whether to tie embeddings for each RNN')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
@@ -56,9 +57,14 @@ actual_y = T.ivector('y')  # single for sentence pair label; 0, 1 or 2
 # shared initial zero hidden state
 h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
 
+# (potentially) shared embeddings
+shared_embeddings = None
+if opts.tied_embeddings:
+    shared_embeddings = util.sharedMatrix(vocab.size(), opts.embedding_dim, 'embeddings', orthogonal_init=True)
+
 # build seperate rnns for passes over s1/s2 with optional bidirectional passes.
 def rnn(idxs, forwards):
-    return SimpleRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim, True, idxs, forwards)
+    return SimpleRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim, True, idxs, forwards, Wx=shared_embeddings)
 
 rnns = [rnn(s1_idxs, forwards=True), rnn(s2_idxs, forwards=True)]
 if opts.bidirectional:
@@ -74,7 +80,7 @@ cross_entropy = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
 layers = rnns + [concat_with_softmax]
 updates = []
 for layer in layers:
-    updates.extend(layer.updates_wrt_cost(cross_entropy, opts.learning_rate))
+    updates.extend(layer.updates_wrt_cost(cross_entropy, opts.learning_rate, updates))
 
 log("compiling")
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
@@ -125,7 +131,7 @@ while epoch != opts.num_epochs:
                    "lr": opts.learning_rate, "dev_acc": dev_accuracy,
                    "train_cost": {"mean": float(np.mean(costs)), "sd": float(np.std(costs))},
                    "dev_cost": dev_cost_stats,
-                   "bidir": opts.bidirectional})
+                   "bidir": opts.bidirectional, "tied_embeddings": opts.tied_embeddings})
             costs = []
         if early_stop:
             exit(0)

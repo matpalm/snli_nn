@@ -18,7 +18,7 @@ class ConcatWithSoftmax(object):
     def params(self):
         return [self.Wih, self.bh, self.Whs, self.bs]
 
-    def updates_wrt_cost(self, cost, learning_rate):
+    def updates_wrt_cost(self, cost, learning_rate, existing_updates):
         gradients = T.grad(cost=cost, wrt=self.params())
         return vanilla(self.params(), gradients, learning_rate)
 
