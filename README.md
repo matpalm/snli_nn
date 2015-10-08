@@ -65,20 +65,22 @@ $ ./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev
 ## checking learning rates
 
 ```
-./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.1 --dev-run-freq=100000 --bidirectional
-./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional
-./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.001 --dev-run-freq=100000 --bidirectional
+export COMMON="--embedding-dim=50 --hidden-dim=50 --dev-run-freq=100000 --bidirectional"
+./nn_baseline.py $COMMON --learning-rate=0.1
+./nn_baseline.py $COMMON --learning-rate=0.01
+./nn_baseline.py $COMMON --learning-rate=0.001
 ```
 
 ![lr_comparison](imgs/lr_comparison.png?raw=true "lr_comparison")
 
-so not stable at 0.1
+so not stable at 0.1. still running sgd; 
 
 ## with tied weights
 
 ```
-./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional --tied-embeddings
-./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional
+export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional"
+./nn_baseline.py $COMMON --tied-embeddings
+./nn_baseline.py $COMMON
 ```
 
 ![tied_comparison_dev_acc](imgs/tied_comparison_dev_acc.png?raw=true "tied_comparison dev accuracy")
@@ -96,6 +98,7 @@ since #embeddings in untied is x4 what if we tried tying but with x4 embedding d
 
 # TODOS
 
+* rmsprop for non embeddings; or at least some learning rate management.
 * preloading of data; it's slow to start
 * grus
 * unrolling? maybe not bother for hacking
