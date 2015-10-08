@@ -53,6 +53,10 @@ dev confusion
 $ ./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=10000 | tee runs/baseline.50.50
 ```
 
+![baseline](imgs/baseline.png?raw=true "baseline")
+
+(vertical line denotes epoch)
+
 ## with bidirectional
 
 * another two rnns; in opposite directions
@@ -67,6 +71,8 @@ $ ./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev
 ```
 
 ![lr_comparison](imgs/lr_comparison.png?raw=true "lr_comparison")
+
+so not stable at 0.1
 
 ## with tied weights
 
