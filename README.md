@@ -61,9 +61,9 @@ $ ./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev
 ## checking learning rates
 
 ```
-./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.1 --dev-run-freq=100000 --bidirectional  | tee runs/20151008.lr_01
-./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional | tee runs/20151008.lr_001
-./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.001 --dev-run-freq=100000 --bidirectional | tee runs/20151008.lr_0001
+./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.1 --dev-run-freq=100000 --bidirectional
+./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional
+./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.001 --dev-run-freq=100000 --bidirectional
 ```
 
 ![lr_comparison](imgs/lr_comparison.png?raw=true "lr_comparison")
