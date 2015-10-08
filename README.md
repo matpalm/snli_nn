@@ -2,17 +2,6 @@
 
 hacking with the Stanford Natural Language Inference corpus http://nlp.stanford.edu/projects/snli/
 
-TODOS
-
-* inc subtensor for E  (prove it's a prob by running 1 epoch small dev test on larger & larger training sets (=> larger E)
-* bidir
-* change output so multiple runs easier (eg dump hyper params with stats)
-* preloading of data
-* grus
-* unrolling?
-* attention
-
-
 # tldr results
 
 ( all for 100 dev )
@@ -28,84 +17,69 @@ nn_baseline.py | 1K | 0.47
 nn_baseline.py | 10K | 0.58
 nn_baseline.py | 500K_ (all) | 0.63
 
-# simple baseline
+# simple logistic regression baseline
 
 features...
 
 * all tokens in sentence 1 prepended with "s1_"
 * all tokens in sentence 2 prepended with "s2_"
 
-## 100 train, 100 dev
+trained on all data; tested on all dev
 
 ```
-$ ./log_reg_baseline.py --num-from-train=100 --num-from-dev=100
-train_ignored 0 dev_ignored 1
+$ time ./log_reg_baseline.py
+
 train confusion
-[[32  0  0]
- [ 0 35  0]
- [ 0  0 33]]
-dev confusion (accuracy)
-[[ 7  8 22]
- [ 6  9 16]
- [ 7  6 19]] (0.35)
+ [[121306  27808  34073]
+  [ 29941 117735  35088]
+  [ 23662  20907 138847]] (0.687860756107)
+
+dev confusion
+ [[2077  549  652]
+  [ 546 2044  645]
+  [ 474  404 2451]] (0.667750457224)
+
+# approx 6m
 ```
 
-## 1_000 train, 100 dev
+# nn models
+
+## baseline
+
+* two rnns; one for each sentence
+* concat output, one layer MLP and softmax over 3 classes
 
 ```
-$ ./log_reg_baseline.py --num-from-train=1000 --num-from-dev=100
-train_ignored 2 dev_ignored 1
-train confusion
-[[312  10  11]
- [  9 304  20]
- [ 16  13 305]]
-dev confusion (accuracy)
-[[20  7 10]
- [ 7 12 12]
- [10  9 13]] (0.45)
+$ ./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=10000 | tee runs/baseline.50.50
 ```
 
-## 10_000 train, 100 dev
+## with bidirectional
+
+* another two rnns; in opposite directions
+* all 4 outputs concatted before MLP & softmax
+
+## checking learning rates
 
 ```
-$ ./log_reg_baseline.py --num-from-train=10000 --num-from-dev=100
-train_ignored 12 dev_ignored 1
-train confusion
-[[2671  277  386]
- [ 305 2590  431]
- [ 298  262 2780]]
-dev confusion (accuracy)
-[[19  7 11]
- [ 6 16  9]
- [10  1 21]] (0.56)
+./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.1 --dev-run-freq=100000 --bidirectional  | tee runs/20151008.lr_01
+./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional | tee runs/20151008.lr_001
+./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.001 --dev-run-freq=100000 --bidirectional | tee runs/20151008.lr_0001
 ```
 
-## all train, 100 dev
+![lr_comparison](imgs/lr_comparison.png?raw=true "lr_comparison")
 
-```
-$ time ./log_reg_baseline.py --num-from-train=-1 --num-from-dev=100
+## with tied weights
 
-|train| 549367 train_ignored 785 dev_ignored 1
-train confusion
-[[121313  27799  34075]
- [ 29942 117733  35089]
- [ 23658  20902 138856]]
-dev confusion (accuracy)
-[[21  6 10]
- [ 4 23  4]
- [ 7  2 23]] (0.67)
+## 
 
-(6m 6s)
-```
+# TODOS
 
-# nn_baseline
+* preloading of data; it's slow to start
+* grus
+* unrolling? maybe not bother for hacking
+* attend from s2 back to s1; then just MLP on s2 (on still concat?)
 
-```
-$ ./nn_baseline.py --embedding-dim=20 --hidden-dim=20 --learning-rate=0.01 --num-from-train=100 --num-from-dev=100 --num-epochs=10
-
-
-
-# vocab check
+# appendix: vocab check
 
 ```
 time cat data/snli_1.0_train.jsonl \
