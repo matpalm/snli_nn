@@ -76,6 +76,22 @@ so not stable at 0.1
 
 ## with tied weights
 
+```
+./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional --tied-embeddings
+./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional
+```
+
+![tied_comparison_dev_acc](imgs/tied_comparison_dev_acc.png?raw=true "tied_comparison dev accuracy")
+![tied_comparison_costs](imgs/tied_comparison_costs.png?raw=true "tied_comparison test/dev costs")
+
+* untied is clear winner, but with x4 params for embeddings (40k entries)
+
+since #embeddings in untied is x4 what if we tried tying but with x4 embedding dimensionality?
+
+![tied_comparison_dev_acc_50_200](imgs/tied_comparison_dev_acc_50_200.png?raw=true "tied_comparison dev accuracy, 50d vs 200d")
+
+* hmmm. 200d was taking much longer to run. both 50d were overfitting. is there _any_ chance the 200d could eventually overtake the 50d untied?
+
 ## 
 
 # TODOS
