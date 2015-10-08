@@ -87,6 +87,7 @@ export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run
 ![tied_comparison_costs](imgs/tied_comparison_costs.png?raw=true "tied_comparison test/dev costs")
 
 * untied is clear winner, but with x4 params for embeddings (40k entries)
+* what's with the inflection of _training_ cost in the TIED case (??)
 
 since #embeddings in untied is x4 what if we tried tying but with x4 embedding dimensionality?
 
