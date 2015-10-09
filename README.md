@@ -95,7 +95,20 @@ since #embeddings in untied is x4 what if we tried tying but with x4 embedding d
 
 * hmmm. 200d was taking much longer to run. both 50d were overfitting. is there _any_ chance the 200d could eventually overtake the 50d untied?
 
-## 
+## l2
+
+adding an l2 penalty; stabilised (and still converging by the look)
+
+```
+export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional"
+./nn_baseline.py $COMMON --tied-embeddings --l2-penalty=0.0
+./nn_baseline.py $COMMON --tied-embeddings --l2-penalty=0.0001
+./nn_baseline.py $COMMON                   --l2-penalty=0.0
+./nn_baseline.py $COMMON                   --l2-penalty=0.0001
+```
+
+![l2_comparison_dev_acc](imgs/l2_comparison_dev_acc.png?raw=true "l2 comparison dev accuracy")
+![l2_comparison_costs](imgs/l2_comparison_costs.png?raw=true "l2 comparison test/dev costs")
 
 # TODOS
 

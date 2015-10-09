@@ -65,4 +65,6 @@ def accuracy(confusion):
     # ratio of on diagonal vs not on diagonal
     return np.sum(confusion * np.identity(len(confusion))) / np.sum(confusion)
 
+def mean_sd(v):
+    return {"mean": float(np.mean(v)), "sd": float(np.std(v))}
 

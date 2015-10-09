@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 from concat_with_softmax import ConcatWithSoftmax
+import itertools
 import json
 import numpy as np
 from simple_rnn import SimpleRnn
@@ -27,6 +28,7 @@ parser.add_argument('--embedding-dim', default=3, type=int, help='embedding node
 parser.add_argument('--hidden-dim', default=4, type=int, help='hidden node dimensionality')
 parser.add_argument('--bidirectional', action='store_true', help='whether to build bidirectional rnns for s1 & s2')
 parser.add_argument('--tied-embeddings', action='store_true', help='whether to tie embeddings for each RNN')
+parser.add_argument('--l2-penalty', default=0.0001, type=float, help='l2 penalty for params')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
@@ -75,42 +77,56 @@ final_rnn_states = [rnn.final_state_given(h0) for rnn in rnns]
 concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
-# calc xent and get each layer to provide updates
-cross_entropy = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
+# define all layers
 layers = rnns + [concat_with_softmax]
+
+# calc l2_sum across all params
+params = [l.params() for l in layers]
+l2_sum = sum([(p**2).sum() for p in itertools.chain(*params)])
+
+# calculate cost ; xent + l2 penalty
+cross_entropy_cost = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
+l2_cost = opts.l2_penalty * l2_sum
+total_cost = cross_entropy_cost + l2_cost
+
+#TODO: a debug hook for norms too
+
+# calculate updates
 updates = []
 for layer in layers:
-    updates.extend(layer.updates_wrt_cost(cross_entropy, opts.learning_rate, updates))
+    updates.extend(layer.updates_wrt_cost(total_cost, opts.learning_rate, updates))
 
 log("compiling")
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
-                           outputs=[cross_entropy],
+                           outputs=[total_cost],
                            updates=updates)
 test_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
-                          outputs=[pred_y, cross_entropy])
+                          outputs=[pred_y, cross_entropy_cost, l2_cost])
 
-def test_on_dev_set():
+def stats_from_dev_set():
     actuals = []
     predicteds  = []
-    costs = []
+    cost = []
+    xent_costs = []
+    l2_costs = []
     for (s1, s2), y in zip(dev_x, dev_y):
-        pred_y, cost = test_fn(s1, s2, [y])
+        pred_y, xent_cost, l2_cost = test_fn(s1, s2, [y])
         actuals.append(y)
         predicteds.append(pred_y)
-        costs.append(cost)
+        costs.append(xent_cost + l2_cost)
+        xent_costs.append(xent_cost)
+        l2_costs.append(l2_cost)
     dev_c = confusion_matrix(actuals, predicteds)
     dev_c_accuracy = util.accuracy(dev_c)
     print "dev confusion\n %s (%s)" % (dev_c, dev_c_accuracy)
-    return dev_c_accuracy, {"mean": float(np.mean(costs)), "sd": float(np.std(costs))}
+    return {"dev_acc": dev_c_accuracy, 
+            "dev_cost": util.mean_sd(costs),
+            "dev_subcost": {"xent": util.mean_sd(xent_costs),
+                            "l2": util.mean_sd(l2_costs)}}
 
-START_TIME = int(time.time())
-def stats(d):
-    d['dts_h'] = dts()
-    d['elapsed_time'] = int(time.time()) - START_TIME
-    print "STATS\t%s" % json.dumps(d)
-    sys.stdout.flush()
 
 log("training")
+START_TIME = int(time.time())
 epoch = 0
 n_egs_trained = 0
 training_early_stop_time = opts.max_run_time_sec + time.time()
@@ -125,13 +141,16 @@ while epoch != opts.num_epochs:
         if opts.max_run_time_sec != -1 and time.time() > training_early_stop_time:
             early_stop = True
         if n_egs_trained % opts.dev_run_freq == 0 or early_stop:
-            dev_accuracy, dev_cost_stats = test_on_dev_set()
-            stats({"run": run, "epoch": epoch, "n_egs_trained": n_egs_trained,
-                   "e_dim": opts.embedding_dim, "h_dim": opts.hidden_dim,
-                   "lr": opts.learning_rate, "dev_acc": dev_accuracy,
-                   "train_cost": {"mean": float(np.mean(costs)), "sd": float(np.std(costs))},
-                   "dev_cost": dev_cost_stats,
-                   "bidir": opts.bidirectional, "tied_embeddings": opts.tied_embeddings})
+            stats = {"dts_h": dts(), "elapsed_time": int(time.time()) - START_TIME,
+                     "run": run, "epoch": epoch, "n_egs_trained": n_egs_trained,
+                     "e_dim": opts.embedding_dim, "h_dim": opts.hidden_dim,
+                     "lr": opts.learning_rate, "train_cost": util.mean_sd(costs),
+                     "l2_penalty": opts.l2_penalty, 
+                     "bidir": opts.bidirectional, "tied_embeddings": opts.tied_embeddings}
+            stats.update(stats_from_dev_set())
+            print "STATS\t%s" % json.dumps(stats)
+            sys.stdout.flush()
+
             costs = []
         if early_stop:
             exit(0)
