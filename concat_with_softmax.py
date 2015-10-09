@@ -14,13 +14,14 @@ class ConcatWithSoftmax(object):
         # hidden -> softmax
         self.Whs = util.sharedMatrix(n_hidden, n_labels, 'Whs')
         self.bs = util.shared(util.zeros((1, n_labels)), 'bs')
+        self.params = [self.Wih, self.bh, self.Whs, self.bs]
 
-    def params(self):
-        return [self.Wih, self.bh, self.Whs, self.bs]
+    def params_for_l2_penalty(self):
+        return self.params
 
-    def updates_wrt_cost(self, cost, learning_rate, existing_updates):
-        gradients = T.grad(cost=cost, wrt=self.params())
-        return vanilla(self.params(), gradients, learning_rate)
+    def updates_wrt_cost(self, cost, learning_rate):
+        gradients = T.grad(cost=cost, wrt=self.params)
+        return vanilla(self.params, gradients, learning_rate)
 
     def prob_pred(self):
         hidden = T.nnet.sigmoid(T.dot(self.input, self.Wih) + self.bh)

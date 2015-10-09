@@ -75,48 +75,26 @@ export COMMON="--embedding-dim=50 --hidden-dim=50 --dev-run-freq=100000 --bidire
 
 so not stable at 0.1. still running sgd; 
 
-## with tied weights
+## with tied weights & l2 penalty
 
 ```
-export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional"
-./nn_baseline.py $COMMON --tied-embeddings
-./nn_baseline.py $COMMON
+export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000"
+./nn_baseline.py $COMMON | tee runs/onight.20151009.notied.nobidir
+./nn_baseline.py $COMMON --tied-embeddings | tee runs/onight.20151009.tied.nobidir
+./nn_baseline.py $COMMON --bidirectional | tee runs/onight.20151009.notied.bidir
+./nn_baseline.py $COMMON --bidirectional --tied-embeddings | tee runs/onight.20151009.tied.bidir
 ```
 
 ![tied_comparison_dev_acc](imgs/tied_comparison_dev_acc.png?raw=true "tied_comparison dev accuracy")
-![tied_comparison_costs](imgs/tied_comparison_costs.png?raw=true "tied_comparison test/dev costs")
-
-* untied is clear winner, but with x4 params for embeddings (40k entries)
-* what's with the inflection of _training_ cost in the TIED case (??)
-
-since #embeddings in untied is x4 what if we tried tying but with x4 embedding dimensionality?
-
-![tied_comparison_dev_acc_50_200](imgs/tied_comparison_dev_acc_50_200.png?raw=true "tied_comparison dev accuracy, 50d vs 200d")
-
-* hmmm. 200d was taking much longer to run. both 50d were overfitting. is there _any_ chance the 200d could eventually overtake the 50d untied?
-
-## l2
-
-adding an l2 penalty; stabilised (and still converging by the look)
-
-```
-export COMMON="--embedding-dim=100 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=10000 --bidirectional"
-./nn_baseline.py $COMMON --tied-embeddings --l2-penalty=0.0
-./nn_baseline.py $COMMON --tied-embeddings --l2-penalty=0.0001
-./nn_baseline.py $COMMON                   --l2-penalty=0.0
-./nn_baseline.py $COMMON                   --l2-penalty=0.0001
-```
-
-![l2_comparison_dev_acc](imgs/l2_comparison_dev_acc.png?raw=true "l2 comparison dev accuracy")
-![l2_comparison_costs](imgs/l2_comparison_costs.png?raw=true "l2 comparison test/dev costs")
 
 # TODOS
 
 * rmsprop for non embeddings; or at least some learning rate management.
 * preloading of data; it's slow to start
 * grus
+* neutral examples are non symmetric, should swap them 0.5 during training
 * unrolling? maybe not bother for hacking. might be finally up to a point where batching speed matters...
-* attend from s2 back to s1; then just MLP on s2 (on still concat?)
+* unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
 
 # appendix: vocab check
 

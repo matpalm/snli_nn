@@ -7,9 +7,11 @@ import numpy as np
 from simple_rnn import SimpleRnn
 from sklearn.metrics import confusion_matrix
 import sys
+from tied_embeddings import TiedEmbeddings
 import time
 import theano
 import theano.tensor as T
+import os
 import util
 from updates import vanilla, rmsprop
 from vocab import Vocab
@@ -22,7 +24,7 @@ parser.add_argument("--num-from-dev", default=-1, type=int, help='number of egs 
 parser.add_argument("--dev-run-freq", default=100000, type=int, help='frequency (in num examples trained) to run against dev set')
 parser.add_argument("--num-epochs", default=-1, type=int, help='number of epoches to run. -1 => forever')
 parser.add_argument("--max-run-time-sec", default=-1, type=int, help='max secs to run before early stopping. -1 => dont early stop')
-parser.add_argument('--learning-rate', default=0.05, type=float, help='learning rate')
+parser.add_argument('--learning-rate', default=0.01, type=float, help='learning rate')
 parser.add_argument('--adaptive-learning-rate-fn', default='vanilla', help='vanilla (sgd) or rmsprop')
 parser.add_argument('--embedding-dim', default=100, type=int, help='embedding node dimensionality')
 parser.add_argument('--hidden-dim', default=50, type=int, help='hidden node dimensionality')
@@ -56,32 +58,51 @@ s1_idxs = T.ivector('s1')  # sequence for sentence one
 s2_idxs = T.ivector('s2')  # sequence for sentence two
 actual_y = T.ivector('y')  # single for sentence pair label; 0, 1 or 2
 
-# shared initial zero hidden state
-h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
 
-# (potentially) shared embeddings
-shared_embeddings = None
-if opts.tied_embeddings:
-    shared_embeddings = util.sharedMatrix(vocab.size(), opts.embedding_dim, 'embeddings', orthogonal_init=True)
+# keep track of different "layers" that handle their own gradients.
+# includes rnns, final concat & softmax and, potentially, special handling for
+# tied embeddings
+layers = []
 
-# build seperate rnns for passes over s1/s2 with optional bidirectional passes.
-def rnn(idxs, forwards):
-    return SimpleRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim, True, idxs, forwards, Wx=shared_embeddings)
+# helper to build an rnn across s1 or s2.
+# bidirectional passes are made with explicitly reversed idxs
+def rnn(idxs=None, sequence_embeddings=None):
+    return SimpleRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim,
+                     idxs=idxs, sequence_embeddings=sequence_embeddings)
+rnns = None
 
-rnns = [rnn(s1_idxs, forwards=True), rnn(s2_idxs, forwards=True)]
+# decide set of sequence idxs we'll be processing. there will always the two
+# for the forward passes over s1 and s2 and, optionally, two more for the
+# reverse pass over s1 & s2 in the bidirectional case.
+idxs = [s1_idxs, s2_idxs]
 if opts.bidirectional:
-    rnns += [rnn(s1_idxs, forwards=False), rnn(s2_idxs, forwards=False)]
-final_rnn_states = [rnn.final_state_given(h0) for rnn in rnns]
+    idxs.extend([s1_idxs[::-1], s2_idxs[::-1]])
+
+# build rnns. we know we will build an rnn for each sequence idx but depending
+# on whether we are using tied embeddings there will be either 1 global embedding matrix
+# (whose gradients are managed by TiedEmbeddings) or there will be 1 embeddings matrix per
+# rnn (whose gradients are managed by the rnn itself)
+if opts.tied_embeddings:
+    # make shared tied embeddings helper
+    tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim)
+    layers.append(tied_embeddings)
+    # build an rnn per idx slices. rnn don't maintain their own embeddings in this case.
+    slices = tied_embeddings.slices_for_idxs(idxs)
+    rnns = [rnn(sequence_embeddings=s) for s in slices]
+else:
+    # no tied embeddings; each rnn handles it's own weights
+    rnns = [rnn(idxs=i) for i in idxs]
+layers.extend(rnns)
 
 # concat final states of rnns, do a final linear combo and apply softmax for prediction.
+h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
+final_rnn_states = [rnn.final_state_given(h0) for rnn in rnns]
 concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim)
+layers.append(concat_with_softmax)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
-# define all layers
-layers = rnns + [concat_with_softmax]
-
 # calc l2_sum across all params
-params = [l.params() for l in layers]
+params = [l.params_for_l2_penalty() for l in layers]
 l2_sum = sum([(p**2).sum() for p in itertools.chain(*params)])
 
 # calculate cost ; xent + l2 penalty
@@ -94,7 +115,7 @@ total_cost = cross_entropy_cost + l2_cost
 # calculate updates
 updates = []
 for layer in layers:
-    updates.extend(layer.updates_wrt_cost(total_cost, opts.learning_rate, updates))
+    updates.extend(layer.updates_wrt_cost(total_cost, opts.learning_rate))
 
 log("compiling")
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
@@ -119,7 +140,7 @@ def stats_from_dev_set():
     dev_c = confusion_matrix(actuals, predicteds)
     dev_c_accuracy = util.accuracy(dev_c)
     print "dev confusion\n %s (%s)" % (dev_c, dev_c_accuracy)
-    return {"dev_acc": dev_c_accuracy, 
+    return {"dev_acc": dev_c_accuracy,
             "dev_cost": util.mean_sd(costs),
             "dev_subcost": {"xent": util.mean_sd(xent_costs),
                             "l2": util.mean_sd(l2_costs)}}
@@ -130,7 +151,7 @@ START_TIME = int(time.time())
 epoch = 0
 n_egs_trained = 0
 training_early_stop_time = opts.max_run_time_sec + time.time()
-run = "RUN_%s" % START_TIME
+run = "RUN_%s_%s" % (START_TIME, os.getpid())
 while epoch != opts.num_epochs:
     costs = []
     for (s1, s2), y in zip(train_x, train_y):
@@ -145,7 +166,7 @@ while epoch != opts.num_epochs:
                      "run": run, "epoch": epoch, "n_egs_trained": n_egs_trained,
                      "e_dim": opts.embedding_dim, "h_dim": opts.hidden_dim,
                      "lr": opts.learning_rate, "train_cost": util.mean_sd(costs),
-                     "l2_penalty": opts.l2_penalty, 
+                     "l2_penalty": opts.l2_penalty,
                      "bidir": opts.bidirectional, "tied_embeddings": opts.tied_embeddings}
             stats.update(stats_from_dev_set())
             print "STATS\t%s" % json.dumps(stats)
