@@ -100,7 +100,7 @@ since #embeddings in untied is x4 what if we tried tying but with x4 embedding d
 adding an l2 penalty; stabilised (and still converging by the look)
 
 ```
-export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000 --bidirectional"
+export COMMON="--embedding-dim=100 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=10000 --bidirectional"
 ./nn_baseline.py $COMMON --tied-embeddings --l2-penalty=0.0
 ./nn_baseline.py $COMMON --tied-embeddings --l2-penalty=0.0001
 ./nn_baseline.py $COMMON                   --l2-penalty=0.0
@@ -115,7 +115,7 @@ export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run
 * rmsprop for non embeddings; or at least some learning rate management.
 * preloading of data; it's slow to start
 * grus
-* unrolling? maybe not bother for hacking
+* unrolling? maybe not bother for hacking. might be finally up to a point where batching speed matters...
 * attend from s2 back to s1; then just MLP on s2 (on still concat?)
 
 # appendix: vocab check
