@@ -79,10 +79,10 @@ so not stable at 0.1. still running sgd;
 
 ```
 export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000"
-./nn_baseline.py $COMMON | tee runs/onight.20151009.notied.nobidir
-./nn_baseline.py $COMMON --tied-embeddings | tee runs/onight.20151009.tied.nobidir
-./nn_baseline.py $COMMON --bidirectional | tee runs/onight.20151009.notied.bidir
-./nn_baseline.py $COMMON --bidirectional --tied-embeddings | tee runs/onight.20151009.tied.bidir
+./nn_baseline.py $COMMON
+./nn_baseline.py $COMMON --tied-embeddings
+./nn_baseline.py $COMMON --bidirectional
+./nn_baseline.py $COMMON --bidirectional --tied-embeddings
 ```
 
 ![tied_comparison_dev_acc](imgs/tied_comparison_dev_acc.png?raw=true "tied_comparison dev accuracy")
