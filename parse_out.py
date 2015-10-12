@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 import json, sys
-print "run e_dim h_dim lr l2_penalty epoch n dev_acc train_cost_mean dev_cost_mean tied_embeddings bidir".replace(" ", "\t")
+print "run e_dim h_dim lr l2_penalty epoch update_fn n dev_acc train_cost_mean dev_cost_mean tied_embeddings bidir".replace(" ", "\t")
 for line in sys.stdin:
     if not line.startswith("STATS"):
         continue
     _stats, json_str = line.split("\t")  # sanity check only two
     stats = json.loads(json_str)    
-    out = [stats[f] for f in ['run', 'e_dim', 'h_dim', 'lr', 'l2_penalty', 'epoch', 'n_egs_trained', 'dev_acc']]
+    if 'update_fn' not in stats:
+        stats['update_fn'] = 'vanilla'
+    out = [stats[f] for f in ['run', 'e_dim', 'h_dim', 'lr', 'l2_penalty', 'epoch', 'update_fn', 'n_egs_trained', 'dev_acc']]
     out.append(stats['train_cost']['mean'])
     out.append(stats['dev_cost']['mean'])
     out.append("TIED" if stats['tied_embeddings'] else "UNTIED")

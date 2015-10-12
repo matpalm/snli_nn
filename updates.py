@@ -6,10 +6,6 @@ def vanilla(params, gradients, learning_rate):
     return [(param, param - learning_rate * gradient) 
             for param, gradient in zip(params, gradients)]
 
-#def sparse_vanilla(params, sub_params, gradients, learning_rate):
-#    return [(param, T.inc_subtensor(sub_param, -learning_rate * gradient)) 
-#            for param, sub_param, gradient in zip(params, sub_params, gradients)]
-
 def rmsprop(params, gradients, learning_rate):
     updates = []
     for param_t0, gradient in zip(params, gradients):

@@ -25,7 +25,7 @@ parser.add_argument("--dev-run-freq", default=100000, type=int, help='frequency 
 parser.add_argument("--num-epochs", default=-1, type=int, help='number of epoches to run. -1 => forever')
 parser.add_argument("--max-run-time-sec", default=-1, type=int, help='max secs to run before early stopping. -1 => dont early stop')
 parser.add_argument('--learning-rate', default=0.01, type=float, help='learning rate')
-parser.add_argument('--adaptive-learning-rate-fn', default='vanilla', help='vanilla (sgd) or rmsprop')
+parser.add_argument('--update-fn', default='vanilla', help='vanilla (sgd) or rmsprop')
 parser.add_argument('--embedding-dim', default=100, type=int, help='embedding node dimensionality')
 parser.add_argument('--hidden-dim', default=50, type=int, help='hidden node dimensionality')
 parser.add_argument('--bidirectional', action='store_true', help='whether to build bidirectional rnns for s1 & s2')
@@ -67,7 +67,7 @@ layers = []
 # helper to build an rnn across s1 or s2.
 # bidirectional passes are made with explicitly reversed idxs
 def rnn(idxs=None, sequence_embeddings=None):
-    return SimpleRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim,
+    return SimpleRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim, opts.update_fn,
                      idxs=idxs, sequence_embeddings=sequence_embeddings)
 rnns = None
 
@@ -97,7 +97,7 @@ layers.extend(rnns)
 # concat final states of rnns, do a final linear combo and apply softmax for prediction.
 h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
 final_rnn_states = [rnn.final_state_given(h0) for rnn in rnns]
-concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim)
+concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim, opts.update_fn)
 layers.append(concat_with_softmax)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
@@ -167,7 +167,8 @@ while epoch != opts.num_epochs:
                      "e_dim": opts.embedding_dim, "h_dim": opts.hidden_dim,
                      "lr": opts.learning_rate, "train_cost": util.mean_sd(costs),
                      "l2_penalty": opts.l2_penalty,
-                     "bidir": opts.bidirectional, "tied_embeddings": opts.tied_embeddings}
+                     "bidir": opts.bidirectional, "tied_embeddings": opts.tied_embeddings,
+                     "update_fn": opts.update_fn}
             stats.update(stats_from_dev_set())
             print "STATS\t%s" % json.dumps(stats)
             sys.stdout.flush()

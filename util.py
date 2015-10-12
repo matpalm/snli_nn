@@ -59,6 +59,7 @@ def eye(size, scale=1):
     return np.eye(size) * scale
 
 def zeros(shape):
+    # TODO: drop this
     return np.zeros(shape)
 
 def accuracy(confusion):

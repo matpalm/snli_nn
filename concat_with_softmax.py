@@ -4,7 +4,7 @@ import util
 from updates import vanilla, rmsprop
 
 class ConcatWithSoftmax(object):
-    def __init__(self, states, n_labels, n_hidden_previous):
+    def __init__(self, states, n_labels, n_hidden_previous, update_fn):
         self.input = T.concatenate(states)
         input_size = len(states) * n_hidden_previous
         # input -> hidden (sized somwhere between size of input & softmax)
@@ -14,14 +14,20 @@ class ConcatWithSoftmax(object):
         # hidden -> softmax
         self.Whs = util.sharedMatrix(n_hidden, n_labels, 'Whs')
         self.bs = util.shared(util.zeros((1, n_labels)), 'bs')
-        self.params = [self.Wih, self.bh, self.Whs, self.bs]
+
+        self.update_fn = globals().get(update_fn)
+        if self.update_fn is None:
+            raise Exception("no such update function", update_fn)
+
+    def dense_params(self):
+        return [self.Wih, self.bh, self.Whs, self.bs]
 
     def params_for_l2_penalty(self):
-        return self.params
+        return self.dense_params()
 
     def updates_wrt_cost(self, cost, learning_rate):
-        gradients = T.grad(cost=cost, wrt=self.params)
-        return vanilla(self.params, gradients, learning_rate)
+        gradients = T.grad(cost=cost, wrt=self.dense_params())
+        return self.update_fn(self.dense_params(), gradients, learning_rate)
 
     def prob_pred(self):
         hidden = T.nnet.sigmoid(T.dot(self.input, self.Wih) + self.bh)
