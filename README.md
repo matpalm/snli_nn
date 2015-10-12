@@ -57,12 +57,12 @@ $ ./nn_baseline.py --embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev
 
 (vertical line denotes epoch)
 
-## with bidirectional
+### with bidirectional
 
 * another two rnns; in opposite directions
 * all 4 outputs concatted before MLP & softmax
 
-## checking learning rates
+### checking learning rates
 
 ```
 export COMMON="--embedding-dim=50 --hidden-dim=50 --dev-run-freq=100000 --bidirectional"
@@ -75,7 +75,7 @@ export COMMON="--embedding-dim=50 --hidden-dim=50 --dev-run-freq=100000 --bidire
 
 so not stable at 0.1. still running sgd; 
 
-## with tied weights & l2 penalty
+### with tied embeddings & l2 penalty
 
 ```
 export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000"
@@ -87,14 +87,25 @@ export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run
 
 ![tied_comparison_dev_acc](imgs/tied_comparison_dev_acc.png?raw=true "tied_comparison dev accuracy")
 
-# TODOS
+### TODOS
 
-* rmsprop for non embeddings; or at least some learning rate management.
-* preloading of data; it's slow to start
-* grus
 * neutral examples are non symmetric, should swap them 0.5 during training
+* refactor stats collection into own object
+* try rmsprop for non embeddings; or at least some learning rate management.
+* preloading of data; it's slow to start
+* port grus across from rnnlm
 * unrolling? maybe not bother for hacking. might be finally up to a point where batching speed matters...
 * unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
+
+## nn seq2seq
+
+* bidir on s1; keep start / last concatted state
+* unidir on s2 with input per timestep from s1 output
+
+## nn seq2seq with attention
+
+* bidir on s1; keep all states concatted
+* unidir on s2 with input attended over s1 states
 
 # appendix: vocab check
 
