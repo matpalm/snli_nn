@@ -2,6 +2,7 @@ from collections import Counter
 import json
 import numpy as np
 import theano
+import time
 import sys
 
 def tokens_in_parse(parse):
@@ -69,3 +70,5 @@ def accuracy(confusion):
 def mean_sd(v):
     return {"mean": float(np.mean(v)), "sd": float(np.std(v))}
 
+def dts():
+    return time.strftime("%Y-%m-%d %H:%M:%S")
