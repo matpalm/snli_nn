@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 import json, sys
-fields = None
+
+fields = set()
+all_stats = []
 for line in sys.stdin:
     if not line.startswith("STATS"):
         continue        
     _stats, json_str = line.split("\t")  # sanity check only two
     stats = json.loads(json_str)    
-    if 'update_fn' not in stats:
-        stats['update_fn'] = 'vanilla'
-    if fields is None:
-        fields = stats.keys()
-        print "\t".join(fields)
+    all_stats.append(stats)
+    fields.update(stats.keys())
+fields = list(fields)
+
+print "\t".join(fields)
+
+for stats in all_stats:
     values = []
     for field in fields:
         value = stats[field] if field in stats else "NA"
