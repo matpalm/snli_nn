@@ -43,6 +43,7 @@ dev confusion
 
 # nn models
 
+<<<<<<< HEAD
 three nn models
 
 * nn_baseline: uni/bidirectional rnns (simple/gru) over s1/s2; concatenated states; MLP to softmax
@@ -97,8 +98,6 @@ optional arguments:
                         initial bias for r & z for GruRnn. higher => more like
                         SimpleRnn
 ```
-
-### first run unidirectional
 
 * two rnns; one for each sentence
 * concat output, one layer MLP and softmax over 3 classes
