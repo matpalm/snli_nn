@@ -44,6 +44,53 @@ dev confusion
 
 # nn models
 
+```
+usage: nn_baseline.py [-h] [--train-set TRAIN_SET]
+                      [--num-from-train NUM_FROM_TRAIN] [--dev-set DEV_SET]
+                      [--num-from-dev NUM_FROM_DEV]
+                      [--dev-run-freq DEV_RUN_FREQ] [--num-epochs NUM_EPOCHS]
+                      [--max-run-time-sec MAX_RUN_TIME_SEC]
+                      [--learning-rate LEARNING_RATE] [--update-fn UPDATE_FN]
+                      [--embedding-dim EMBEDDING_DIM]
+                      [--hidden-dim HIDDEN_DIM] [--bidirectional]
+                      [--tied-embeddings] [--l2-penalty L2_PENALTY]
+                      [--rnn-type RNN_TYPE]
+                      [--gru-initial-bias GRU_INITIAL_BIAS]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --train-set TRAIN_SET
+  --num-from-train NUM_FROM_TRAIN
+                        number of egs to read from train. -1 => all
+  --dev-set DEV_SET
+  --num-from-dev NUM_FROM_DEV
+                        number of egs to read from dev. -1 => all
+  --dev-run-freq DEV_RUN_FREQ
+                        frequency (in num examples trained) to run against dev
+                        set
+  --num-epochs NUM_EPOCHS
+                        number of epoches to run. -1 => forever
+  --max-run-time-sec MAX_RUN_TIME_SEC
+                        max secs to run before early stopping. -1 => dont
+                        early stop
+  --learning-rate LEARNING_RATE
+                        learning rate
+  --update-fn UPDATE_FN
+                        vanilla (sgd) or rmsprop
+  --embedding-dim EMBEDDING_DIM
+                        embedding node dimensionality
+  --hidden-dim HIDDEN_DIM
+                        hidden node dimensionality
+  --bidirectional       whether to build bidirectional rnns for s1 & s2
+  --tied-embeddings     whether to tie embeddings for each RNN
+  --l2-penalty L2_PENALTY
+                        l2 penalty for params
+  --rnn-type RNN_TYPE   Rnn cell type {SimpleRnn,GruRnn}
+  --gru-initial-bias GRU_INITIAL_BIAS
+                        initial bias for r & z for GruRnn. higher => more like
+                        SimpleRnn
+```
+
 ## baseline
 
 * two rnns; one for each sentence
@@ -90,10 +137,7 @@ export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run
 ### TODOS
 
 * neutral examples are non symmetric, should swap them 0.5 during training
-* refactor stats collection into own object
-* try rmsprop for non embeddings; or at least some learning rate management.
 * preloading of data; it's slow to start
-* port grus across from rnnlm
 * unrolling? maybe not bother for hacking. might be finally up to a point where batching speed matters...
 * unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
 

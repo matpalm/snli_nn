@@ -1,17 +1,27 @@
 #!/usr/bin/env python
 import json, sys
-print "run e_dim h_dim lr l2_penalty epoch update_fn n dev_acc train_cost_mean dev_cost_mean tied_embeddings bidir".replace(" ", "\t")
+fields = None
 for line in sys.stdin:
     if not line.startswith("STATS"):
-        continue
+        continue        
     _stats, json_str = line.split("\t")  # sanity check only two
     stats = json.loads(json_str)    
     if 'update_fn' not in stats:
         stats['update_fn'] = 'vanilla'
-    out = [stats[f] for f in ['run', 'e_dim', 'h_dim', 'lr', 'l2_penalty', 'epoch', 'update_fn', 'n_egs_trained', 'dev_acc']]
-    out.append(stats['train_cost']['mean'])
-    out.append(stats['dev_cost']['mean'])
-    out.append("TIED" if stats['tied_embeddings'] else "UNTIED")
-    out.append("BIDIR" if stats['bidir'] else "UNIDIR")
-    print "\t".join(map(str, out))
+    if fields is None:
+        fields = stats.keys()
+        print "\t".join(fields)
+    values = []
+    for field in fields:
+        value = stats[field]
+        if field == 'train_cost':
+            value = stats['train_cost']['mean']
+        elif field == 'dev_cost':
+            value = stats['dev_cost']['mean']
+        elif field == 'tied_embeddings':
+            value = "TIED" if value else "UNTIED"
+        elif field == 'bidir':
+            value = "BIDIR" if value else "UNIDIR"
+        values.append(value)
+    print "\t".join(map(str, values))
 
