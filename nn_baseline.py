@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 from concat_with_softmax import ConcatWithSoftmax
+from gru_rnn import GruRnn
 import itertools
 import json
 import numpy as np
@@ -32,6 +33,8 @@ parser.add_argument('--hidden-dim', default=50, type=int, help='hidden node dime
 parser.add_argument('--bidirectional', action='store_true', help='whether to build bidirectional rnns for s1 & s2')
 parser.add_argument('--tied-embeddings', action='store_true', help='whether to tie embeddings for each RNN')
 parser.add_argument('--l2-penalty', default=0.0001, type=float, help='l2 penalty for params')
+parser.add_argument('--rnn-type', default="SimpleRnn", help='Rnn cell type {SimpleRnn,GruRnn}')
+parser.add_argument('--gru-initial-bias', default=2, type=int, help='initial bias for r & z for GruRnn. higher => more like SimpleRnn')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
@@ -56,7 +59,6 @@ s1_idxs = T.ivector('s1')  # sequence for sentence one
 s2_idxs = T.ivector('s2')  # sequence for sentence two
 actual_y = T.ivector('y')  # single for sentence pair label; 0, 1 or 2
 
-
 # keep track of different "layers" that handle their own gradients.
 # includes rnns, final concat & softmax and, potentially, special handling for
 # tied embeddings
@@ -64,9 +66,15 @@ layers = []
 
 # helper to build an rnn across s1 or s2.
 # bidirectional passes are made with explicitly reversed idxs
+rnn_fn = globals().get(opts.rnn_type)
+if rnn_fn is None:
+    raise Exception("unknown rnn type [%s]" % opts.rnn_type)
+update_fn = globals().get(opts.update_fn)
+if update_fn is None:
+    raise Exception("unknown update function [%s]" % opts.update_fn)
 def rnn(idxs=None, sequence_embeddings=None):
-    return SimpleRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim, opts.update_fn,
-                     idxs=idxs, sequence_embeddings=sequence_embeddings)
+    return rnn_fn(vocab.size(), opts.embedding_dim, opts.hidden_dim, opts, 
+                  update_fn, idxs=idxs, sequence_embeddings=sequence_embeddings)
 rnns = None
 
 # decide set of sequence idxs we'll be processing. there will always the two

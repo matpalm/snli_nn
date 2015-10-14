@@ -9,10 +9,10 @@ class Stats(object):
     def __init__(self, opts):
         self.start_time = int(time.time())
         self.n_egs_trained = 0
-        self.base_stats = {"run": "RUN_%s_%s" % (self.start_time, os.getpid()),
-                           "e_dim": opts.embedding_dim, "h_dim": opts.hidden_dim,
-                           "lr": opts.learning_rate, "l2_penalty": opts.l2_penalty,
-                           "bidir": opts.bidirectional, "tied_embeddings": opts.tied_embeddings}
+        self.base_stats = {"run": "RUN_%s_%s" % (self.start_time, os.getpid())}
+        for opt in dir(opts):
+            if not opt.startswith("_"):
+                self.base_stats[opt] = getattr(opts, opt)
         self.reset()
 
     def record_training_cost(self, cost):

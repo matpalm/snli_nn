@@ -4,7 +4,7 @@ import theano
 import theano.tensor as T
 from updates import vanilla, rmsprop
 
-class SimpleRnn(object):
+class GruRnn(object):
     def __init__(self, n_in, n_embedding, n_hidden, opts, update_fn, idxs=None, sequence_embeddings=None):
         assert (idxs is None) ^ (sequence_embeddings is None)
         self.update_fn = update_fn
@@ -17,15 +17,26 @@ class SimpleRnn(object):
             # using tied weights, we won't be handling the update
             self.sequence_embeddings = sequence_embeddings
             self.using_shared_embeddings = True
-        self.Whh = util.sharedMatrix(n_hidden, n_hidden, 'Whh', orthogonal_init=True)
-        self.Whe = util.sharedMatrix(n_hidden, n_embedding, 'Whe', orthogonal_init=True)
-        self.Wb = util.shared(util.zeros((n_hidden,)), 'Wb')
+        # params for standard recurrent step
+        self.Uh = util.sharedMatrix(n_hidden, n_hidden, 'Uh', orthogonal_init=True)
+        self.Wh = util.sharedMatrix(n_hidden, n_embedding, 'Wh', orthogonal_init=True)
+        self.bh = util.shared(util.zeros((n_hidden,)), 'bh')
+        # params for reset gate
+        self.Ur = util.sharedMatrix(n_hidden, n_hidden, 'Ur', orthogonal_init=True)
+        self.Wr = util.sharedMatrix(n_hidden, n_embedding, 'Wr', orthogonal_init=True)
+        self.br = util.shared(np.asarray([opts.gru_initial_bias]*n_hidden), 'br')  # initial bias to not reset
+        # params for carry gate
+        self.Uz = util.sharedMatrix(n_hidden, n_hidden, 'Uz', orthogonal_init=True)
+        self.Wz = util.sharedMatrix(n_hidden, n_embedding, 'Wz', orthogonal_init=True)
+        self.bz = util.shared(np.asarray([opts.gru_initial_bias]*n_hidden), 'bz')  # initial bias to never carry h_t_minus_1
 
     def dense_params(self):
-        return [self.Whh, self.Whe, self.Wb]
+        return [self.Uh, self.Wh, self.bh, 
+                self.Ur, self.Wr, self.br, 
+                self.Uz, self.Wz, self.bz]
 
     def params_for_l2_penalty(self):
-        params = self.dense_params()
+        params = self.dense_params() 
         if not self.using_shared_embeddings:
             params.append(self.sequence_embeddings)
         return params
@@ -41,7 +52,10 @@ class SimpleRnn(object):
         return updates
 
     def recurrent_step(self, embedding, h_t_minus_1):
-        h_t = T.tanh(T.dot(self.Whh, h_t_minus_1) + T.dot(self.Whe, embedding) + self.Wb)
+        r = T.nnet.sigmoid(T.dot(self.Ur, h_t_minus_1) + T.dot(self.Wr, embedding) + self.br)
+        h_t_candidate = T.tanh(r * T.dot(self.Uh, h_t_minus_1) + T.dot(self.Wh, embedding) + self.bh)
+        z = T.nnet.sigmoid(T.dot(self.Uz, h_t_minus_1) + T.dot(self.Wz, embedding) + self.bz)        
+        h_t = (1 - z) * h_t_minus_1 + z * h_t_candidate
         return [h_t, h_t]
 
     def final_state_given(self, h0):
