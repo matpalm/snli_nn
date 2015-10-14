@@ -91,14 +91,11 @@ all_idxs = [s1_idxs, s1_idxs[::-1], s2_idxs, s2_idxs[::-1]]
 # so we have to build this now for s1 and s2 rnns.
 slices = None
 if opts.tied_embeddings:
-    print "TIED"
     # make shared tied embeddings helper
     tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim)
     layers.append(tied_embeddings)
     # build an rnn per idx slices. rnn don't maintain their own embeddings in this case.
     slices = tied_embeddings.slices_for_idxs(all_idxs)
-else:
-    print "NOT TIED"
 
 # shared initial zero state for all rnns
 h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)

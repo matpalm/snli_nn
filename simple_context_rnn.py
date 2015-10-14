@@ -12,7 +12,6 @@ class SimpleContextRnn(object):
         self.context = context
 
         if idxs is not None:
-            print "IDXS", idxs
             # not tying weights, build our own set of embeddings
             self.Wx = util.sharedMatrix(n_in, n_embedding, 'Wx', orthogonal_init=True)
             self.sequence_embeddings = self.Wx[idxs]
@@ -52,7 +51,6 @@ class SimpleContextRnn(object):
         hidden_state += T.dot(self.Whc, context)
         hidden_state += self.Wb
         h_t = T.tanh(hidden_state)
-        h_t = T.cast(h_t, 'float32')  # ???
         return [h_t, h_t]
 
     def final_state_given(self, h0):
