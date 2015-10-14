@@ -6,10 +6,11 @@ import time
 import util
 
 class Stats(object):
-    def __init__(self, opts):
+    def __init__(self, model, opts):
         self.start_time = int(time.time())
         self.n_egs_trained = 0
-        self.base_stats = {"run": "RUN_%s_%s" % (self.start_time, os.getpid())}
+        self.base_stats = {"model": model,
+                           "run": "RUN_%s_%s" % (self.start_time, os.getpid())}
         for opt in dir(opts):
             if not opt.startswith("_"):
                 self.base_stats[opt] = getattr(opts, opt)

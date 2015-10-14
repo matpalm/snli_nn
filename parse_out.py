@@ -13,7 +13,7 @@ for line in sys.stdin:
         print "\t".join(fields)
     values = []
     for field in fields:
-        value = stats[field]
+        value = stats[field] if field in stats else "NA"
         if field == 'train_cost':
             value = stats['train_cost']['mean']
         elif field == 'dev_cost':

@@ -5,6 +5,7 @@ from gru_rnn import GruRnn
 import itertools
 import json
 import numpy as np
+import os
 from simple_rnn import SimpleRnn
 from sklearn.metrics import confusion_matrix
 from stats import Stats
@@ -13,28 +14,40 @@ from tied_embeddings import TiedEmbeddings
 import time
 import theano
 import theano.tensor as T
-import os
 import util
 from updates import vanilla, rmsprop
 from vocab import Vocab
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--train-set", default="data/snli_1.0_train.jsonl")
-parser.add_argument("--num-from-train", default=-1, type=int, help='number of egs to read from train. -1 => all')
+parser.add_argument("--num-from-train", default=-1, type=int,
+                    help='number of egs to read from train. -1 => all')
 parser.add_argument("--dev-set", default="data/snli_1.0_dev.jsonl")
-parser.add_argument("--num-from-dev", default=-1, type=int, help='number of egs to read from dev. -1 => all')
-parser.add_argument("--dev-run-freq", default=100000, type=int, help='frequency (in num examples trained) to run against dev set')
-parser.add_argument("--num-epochs", default=-1, type=int, help='number of epoches to run. -1 => forever')
-parser.add_argument("--max-run-time-sec", default=-1, type=int, help='max secs to run before early stopping. -1 => dont early stop')
+parser.add_argument("--num-from-dev", default=-1, type=int,
+                    help='number of egs to read from dev. -1 => all')
+parser.add_argument("--dev-run-freq", default=100000, type=int,
+                    help='frequency (in num examples trained) to run against dev set')
+parser.add_argument("--num-epochs", default=-1, type=int,
+                    help='number of epoches to run. -1 => forever')
+parser.add_argument("--max-run-time-sec", default=-1, type=int,
+                    help='max secs to run before early stopping. -1 => dont early stop')
 parser.add_argument('--learning-rate', default=0.01, type=float, help='learning rate')
-parser.add_argument('--update-fn', default='vanilla', help='vanilla (sgd) or rmsprop. not applied to embeddings')
-parser.add_argument('--embedding-dim', default=100, type=int, help='embedding node dimensionality')
-parser.add_argument('--hidden-dim', default=50, type=int, help='hidden node dimensionality')
-parser.add_argument('--bidirectional', action='store_true', help='whether to build bidirectional rnns for s1 & s2')
-parser.add_argument('--tied-embeddings', action='store_true', help='whether to tie embeddings for each rnn')
-parser.add_argument('--l2-penalty', default=0.0001, type=float, help='l2 penalty for params')
-parser.add_argument('--rnn-type', default="SimpleRnn", help='rnn cell type {SimpleRnn,GruRnn}')
-parser.add_argument('--gru-initial-bias', default=2, type=int, help='initial bias for r & z for GruRnn. higher => more like SimpleRnn')
+parser.add_argument('--update-fn', default='vanilla',
+                    help='vanilla (sgd) or rmsprop. not applied to embeddings')
+parser.add_argument('--embedding-dim', default=100, type=int,
+                    help='embedding node dimensionality')
+parser.add_argument('--hidden-dim', default=50, type=int,
+                    help='hidden node dimensionality')
+parser.add_argument('--bidirectional', action='store_true',
+                    help='whether to build bidirectional rnns for s1 & s2')
+parser.add_argument('--tied-embeddings', action='store_true',
+                    help='whether to tie embeddings for each rnn')
+parser.add_argument('--l2-penalty', default=0.0001, type=float,
+                    help='l2 penalty for params')
+parser.add_argument('--rnn-type', default="SimpleRnn",
+                    help='rnn cell type {SimpleRnn,GruRnn}')
+parser.add_argument('--gru-initial-bias', default=2, type=int,
+                    help='initial gru bias for r & z. higher => more like SimpleRnn')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
@@ -103,7 +116,8 @@ layers.extend(rnns)
 # concat final states of rnns, do a final linear combo and apply softmax for prediction.
 h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
 final_rnn_states = [rnn.final_state_given(h0) for rnn in rnns]
-concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim, opts.update_fn)
+concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim,
+                                        opts.update_fn)
 layers.append(concat_with_softmax)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
@@ -147,7 +161,7 @@ def stats_from_dev_set(stats):
 log("training")
 epoch = 0
 training_early_stop_time = opts.max_run_time_sec + time.time()
-stats = Stats(opts)
+stats = Stats(os.path.basename(__file__), opts)
 while epoch != opts.num_epochs:
     for (s1, s2), y in zip(train_x, train_y):
         cost, = train_fn(s1, s2, [y])
