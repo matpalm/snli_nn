@@ -10,11 +10,12 @@ model | # train | dev accuracy
 ----- | ----- | --------
 log_reg_baseline.py | 100 | 0.35
 log_reg_baseline.py | 10K | 0.56
-log_reg_baseline.py | 500K+ (all) | 0.67
+log_reg_baseline.py | 500K+ (all) | 0.667
 nn_baseline.py (elman) | 100 | 0.39
 nn_baseline.py (elman) | 10K | 0.58
-nn_baseline.py (elman) | 500K+ (all) | 0.63  UPDATE THIS
-nn_baseline.py (gru) | 500K+ (all) | 0.70 |
+nn_baseline.py (elman) | all | 0.684
+nn_baseline.py (gru) | all | 0.712
+nn_seq2seq.py (elman) | all | ???
 
 # simple logistic regression baseline
 
@@ -141,6 +142,8 @@ export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run
 
 ![tied_comparison_dev_acc](imgs/tied_comparison_dev_acc.png?raw=true "tied_comparison dev accuracy")
 
+will continue with tied embeddings & bidirectional
+
 ### gru vs simple
 
 up until now everything was a simple elman network, let's try a [gru](http://arxiv.org/abs/1412.3555)
@@ -153,22 +156,32 @@ export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embed
 
 ![simple_vs_gru](imgs/simple_vs_gru.png?raw=true "simple vs gru dev accuracy")
 
-### TODOS
+## nn_seq2seq
+
+* bidir on s1; concatenated last states
+* bidir on s2 with added context (per timestep) directly from s1 output
+* MLP on s2 output with softmax
+
+```
+export C="--learning-rate=0.01 --dev-run-freq=10000 --embedding-dim=100 --hidden-dim=100"
+./nn_seq2seq.py $C --tied-embeddings
+./nn_seq2seq.py $C                   
+```
+
+IMAGE HERE
+
+## nn_seq2seq_attention
+
+* bidir on s1; keep all output states 
+* bidir on s2 with input attended over s1 states
+* MLP on s2 output with softmax
+
+# TODOS
 
 * neutral examples are non symmetric, should swap them 0.5 during training
 * preloading of data; it's slow to start
 * unrolling? maybe not bother for hacking. might be finally up to a point where batching speed matters...
 * unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
-
-## nn_seq2seq
-
-* bidir on s1; keep start / last concatted state
-* unidir on s2 with added context (per timestep) directly from s1 output
-
-## nn_seq2seq_attention
-
-* bidir on s1; keep all states concatted
-* unidir on s2 with input attended over s1 states
 
 # appendix: vocab check
 
