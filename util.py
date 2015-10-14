@@ -60,8 +60,7 @@ def eye(size, scale=1):
     return np.eye(size) * scale
 
 def zeros(shape):
-    # TODO: drop this
-    return np.zeros(shape)
+    return np.zeros(shape, dtype='float32')
 
 def accuracy(confusion):
     # ratio of on diagonal vs not on diagonal

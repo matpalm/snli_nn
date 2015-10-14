@@ -1,4 +1,4 @@
-# snli hacking
+B# snli hacking
 
 hacking with the Stanford Natural Language Inference corpus http://nlp.stanford.edu/projects/snli/
 
@@ -13,7 +13,7 @@ log_reg_baseline.py | 10K | 0.56
 log_reg_baseline.py | 500K+ (all) | 0.67
 nn_baseline.py (elman) | 100 | 0.39
 nn_baseline.py (elman) | 10K | 0.58
-nn_baseline.py (elman) | 500K+ (all) | 0.63
+nn_baseline.py (elman) | 500K+ (all) | 0.63  UPDATE THIS
 nn_baseline.py (gru) | 500K+ (all) | 0.70 |
 
 # simple logistic regression baseline
