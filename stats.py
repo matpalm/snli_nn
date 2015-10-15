@@ -16,6 +16,12 @@ class Stats(object):
                 self.base_stats[opt] = getattr(opts, opt)
         self.reset()
 
+    def reset(self):
+        self.train_costs = []
+        self.dev_costs = []
+        self.dev_accuracy = None
+        self.norms = None
+
     def record_training_cost(self, cost):
         self.train_costs.append(cost)
         self.n_egs_trained += 1
@@ -27,6 +33,9 @@ class Stats(object):
         assert self.dev_accuracy is None
         self.dev_accuracy = dev_accuracy
 
+    def set_param_norms(self, norms):
+        self.norms = norms
+
     def flush_to_stdout(self, epoch):
         stats = dict(self.base_stats)
         stats.update({"dts_h": util.dts(), "epoch": epoch,
@@ -35,12 +44,9 @@ class Stats(object):
                       "train_cost": util.mean_sd(self.train_costs),
                       "dev_cost": util.mean_sd(self.dev_costs),
                       "dev_acc": self.dev_accuracy})
+        if self.norms:
+            stats.update({"norms": self.norms})
         print "STATS\t%s" % json.dumps(stats)
         sys.stdout.flush()
         self.reset()
-
-    def reset(self):
-        self.train_costs = []
-        self.dev_costs = []
-        self.dev_accuracy = None
 

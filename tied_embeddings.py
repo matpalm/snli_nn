@@ -23,6 +23,9 @@ class TiedEmbeddings(object):
             offset += seq_len
         return sub_slices
 
+    def name(self):
+        return "tied_embeddings"
+
     def params_for_l2_penalty(self):
         # for l2 penalty only check the subset of the embeddings related to a specific example.
         # ie NOT the entire shared_embeddings, most of which has nothing to do with each example.

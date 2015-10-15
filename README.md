@@ -178,10 +178,11 @@ IMAGE HERE
 
 # TODOS
 
-* neutral examples are non symmetric, should swap them 0.5 during training
+* clipping
+* unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
 * preloading of data; it's slow to start
 * unrolling? maybe not bother for hacking. might be finally up to a point where batching speed matters...
-* unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
+
 
 # appendix: vocab check
 

@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 import json
 import numpy as np
 import random
@@ -79,3 +79,16 @@ def dts():
 
 def coin_flip():
     return random.random() > 0.5
+
+def norms(layers):
+    norms = defaultdict(dict)
+    for l in layers:
+        # TODO: doesn't include embeddings (tied or otherwise)
+        for p in l.params_for_l2_penalty():
+            if p.name is None:
+                continue
+            try:
+                norms[l.name()][p.name] = float(np.linalg.norm(p.get_value()))
+            except AttributeError:
+                pass  # no get_value (?)
+    return dict(norms)

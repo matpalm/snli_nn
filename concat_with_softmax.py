@@ -19,6 +19,9 @@ class ConcatWithSoftmax(object):
         if self.update_fn is None:
             raise Exception("no such update function", update_fn)
 
+    def name(self):
+        return "concat_with_softmax"
+
     def dense_params(self):
         return [self.Wih, self.bh, self.Whs, self.bs]
 

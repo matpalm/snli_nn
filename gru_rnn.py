@@ -5,8 +5,10 @@ import theano.tensor as T
 from updates import vanilla, rmsprop
 
 class GruRnn(object):
-    def __init__(self, n_in, n_embedding, n_hidden, opts, update_fn, idxs=None, sequence_embeddings=None):
+    def __init__(self, name, n_in, n_embedding, n_hidden, opts, update_fn,
+                 idxs=None, sequence_embeddings=None, context=None):
         assert (idxs is None) ^ (sequence_embeddings is None)
+        self.name_ = name
         self.update_fn = update_fn
 
         if idxs is not None:
@@ -33,6 +35,9 @@ class GruRnn(object):
         self.Uz = util.sharedMatrix(n_hidden, n_hidden, 'Uz', orthogonal_init=True)
         self.Wz = util.sharedMatrix(n_hidden, n_embedding, 'Wz', orthogonal_init=True)
         self.bz = util.shared(np.asarray([opts.gru_initial_bias]*n_hidden), 'bz')
+
+    def name(self):
+        return self.name_
 
     def dense_params(self):
         return [self.Uh, self.Wh, self.bh, 

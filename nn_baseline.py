@@ -49,7 +49,9 @@ parser.add_argument('--rnn-type', default="SimpleRnn",
 parser.add_argument('--gru-initial-bias', default=2, type=int,
                     help='initial gru bias for r & z. higher => more like SimpleRnn')
 parser.add_argument('--swap-symmetric-examples', action='store_true',
-                    help='if set we flip s1/s2 for symmetric labels (contradiction or neutral')
+                    help='if set we flip s1/s2 for symmetric labels (contra or neutral')
+parser.add_argument('--dump-norms', action='store_true',
+                    help='dump l2 norms of all params with stats')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
@@ -87,8 +89,8 @@ if rnn_fn is None:
 update_fn = globals().get(opts.update_fn)
 if update_fn is None:
     raise Exception("unknown update function [%s]" % opts.update_fn)
-def rnn(idxs=None, sequence_embeddings=None):
-    return rnn_fn(vocab.size(), opts.embedding_dim, opts.hidden_dim, opts, 
+def rnn(name, idxs=None, sequence_embeddings=None):
+    return rnn_fn(name, vocab.size(), opts.embedding_dim, opts.hidden_dim, opts,
                   update_fn, idxs=idxs, sequence_embeddings=sequence_embeddings)
 rnns = None
 
@@ -96,8 +98,10 @@ rnns = None
 # for the forward passes over s1 and s2 and, optionally, two more for the
 # reverse pass over s1 & s2 in the bidirectional case.
 idxs = [s1_idxs, s2_idxs]
+names = ["s1f", "s2f"]
 if opts.bidirectional:
     idxs.extend([s1_idxs[::-1], s2_idxs[::-1]])
+    names.extend(["s1b", "s2b"])
 
 # build rnns. we know we will build an rnn for each sequence idx but depending
 # on whether we are using tied embeddings there will be either 1 global embedding matrix
@@ -109,10 +113,10 @@ if opts.tied_embeddings:
     layers.append(tied_embeddings)
     # build an rnn per idx slices. rnn don't maintain their own embeddings in this case.
     slices = tied_embeddings.slices_for_idxs(idxs)
-    rnns = [rnn(sequence_embeddings=s) for s in slices]
+    rnns = [rnn(n, sequence_embeddings=s) for n, s in zip(names, slices)]
 else:
     # no tied embeddings; each rnn handles it's own weights
-    rnns = [rnn(idxs=i) for i in idxs]
+    rnns = [rnn(n, idxs=i) for n, i in zip(names, idxs)]
 layers.extend(rnns)
 
 # concat final states of rnns, do a final linear combo and apply softmax for prediction.
@@ -131,9 +135,7 @@ l2_sum = sum([(p**2).sum() for p in itertools.chain(*params)])
 cross_entropy_cost = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
 l2_cost = opts.l2_penalty * l2_sum
 total_cost = cross_entropy_cost + l2_cost
-
-#TODO: a debug hook for norms too
-
+            
 # calculate updates
 updates = []
 for layer in layers:
@@ -182,6 +184,8 @@ while epoch != opts.num_epochs:
             early_stop = True
         if stats.n_egs_trained % opts.dev_run_freq == 0 or early_stop:
             stats_from_dev_set(stats)
+            if opts.dump_norms:
+                stats.set_param_norms(util.norms(layers))
             stats.flush_to_stdout(epoch)
         if early_stop:
             exit(0)

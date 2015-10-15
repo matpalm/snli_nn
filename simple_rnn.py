@@ -5,9 +5,10 @@ import theano.tensor as T
 from updates import vanilla, rmsprop
 
 class SimpleRnn(object):
-    def __init__(self, n_in, n_embedding, n_hidden, opts, update_fn,
+    def __init__(self, name, n_in, n_embedding, n_hidden, opts, update_fn,
                  idxs=None, sequence_embeddings=None, context=None):
         assert (idxs is None) ^ (sequence_embeddings is None)
+        self.name_ = name
         self.update_fn = update_fn
 
         # context represents (potential) extra input to each recurrent call for
@@ -40,6 +41,9 @@ class SimpleRnn(object):
             # context -> hidden
             self.Whc = util.sharedMatrix(n_hidden, 2 * n_hidden, 'Whc',
                                          orthogonal_init=True)
+
+    def name(self):
+        return self.name_
 
     def dense_params(self):
         p = [self.Whh, self.Whe, self.Wb]
