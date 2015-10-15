@@ -48,6 +48,8 @@ parser.add_argument('--rnn-type', default="SimpleRnn",
                     help='rnn cell type {SimpleRnn,GruRnn}')
 parser.add_argument('--gru-initial-bias', default=2, type=int,
                     help='initial gru bias for r & z. higher => more like SimpleRnn')
+parser.add_argument('--swap-symmetric-examples', action='store_true',
+                    help='if set we flip s1/s2 for symmetric labels (contradiction or neutral')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
@@ -164,7 +166,16 @@ training_early_stop_time = opts.max_run_time_sec + time.time()
 stats = Stats(os.path.basename(__file__), opts)
 while epoch != opts.num_epochs:
     for (s1, s2), y in zip(train_x, train_y):
-        cost, = train_fn(s1, s2, [y])
+
+        # we may choose to swap s1/s2 for symmetric examples; i.e. contradictions
+        # and neutral statements.
+        flip_s1_s2 = opts.swap_symmetric_examples and util.coin_flip() and \
+            util.symmetric_example(y)
+        if flip_s1_s2:
+            cost, = train_fn(s2, s1, [y])
+        else:
+            cost, = train_fn(s1, s2, [y])
+
         stats.record_training_cost(cost)
         early_stop = False
         if opts.max_run_time_sec != -1 and time.time() > training_early_stop_time:

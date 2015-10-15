@@ -23,9 +23,11 @@ for stats in all_stats:
         elif field == 'dev_cost':
             value = stats['dev_cost']['mean']
         elif field == 'tied_embeddings':
-            value = "TIED" if value else "UNTIED"
+            value = "TIED" if value==True else "UNTIED"
         elif field == 'bidir':
-            value = "BIDIR" if value else "UNIDIR"
+            value = "BIDIR" if value==True else "UNIDIR"
+        elif field == 'swap_symmetric_examples':
+            value = "SWAP" if value==True else "NO_SWAP"
         values.append(value)
     print "\t".join(map(str, values))
 

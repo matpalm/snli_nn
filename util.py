@@ -1,9 +1,10 @@
 from collections import Counter
 import json
 import numpy as np
+import random
+import sys
 import theano
 import time
-import sys
 
 def tokens_in_parse(parse):
     for token in parse.split(" "):
@@ -15,12 +16,16 @@ def tokens_in_sentences(eg):
     tokens_in_s2 = list(tokens_in_parse(eg['sentence2_binary_parse']))
     return (tokens_in_s1, tokens_in_s2)
 
+LABELS = ['contradiction', 'neutral', 'entailment']
+
 def label_for(eg):
-    labels = ['contradiction', 'neutral', 'entailment']
     try:
-        return labels.index(eg['gold_label'])
+        return LABELS.index(eg['gold_label'])
     except ValueError:
         return None
+
+def symmetric_example(label):
+    return LABELS[label] != 'entailment'
 
 def load_data(dataset, vocab, max_egs=None, update_vocab=True):
     stats = Counter()
@@ -71,3 +76,6 @@ def mean_sd(v):
 
 def dts():
     return time.strftime("%Y-%m-%d %H:%M:%S")
+
+def coin_flip():
+    return random.random() > 0.5
