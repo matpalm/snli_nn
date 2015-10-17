@@ -14,7 +14,7 @@ log_reg_baseline.py | 500K+ (all) | 0.667
 nn_baseline.py (elman) | 100 | 0.39
 nn_baseline.py (elman) | 10K | 0.58
 nn_baseline.py (elman) | all | 0.684
-nn_baseline.py (gru) | all | 0.712
+nn_baseline.py (gru) | all | *0.741*
 nn_seq2seq.py (elman) | all | ???
 
 # simple logistic regression baseline
@@ -179,6 +179,9 @@ IMAGE HERE
 # TODOS
 
 * clipping
+* pre-seed embeddings
+* dropout
+* larger MLP? (deeper and larger hidden layer) ?
 * unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
 * preloading of data; it's slow to start
 * unrolling? maybe not bother for hacking. might be finally up to a point where batching speed matters...
@@ -229,3 +232,4 @@ are | 93788 | shirt | 56578
 an | 87625 | while | 56323
 were | 85952 | black | 55133
 which | 83635 | dog | 54026
+
