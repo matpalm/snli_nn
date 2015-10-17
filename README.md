@@ -155,6 +155,8 @@ export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embed
 
 ![simple_vs_gru](imgs/simple_vs_gru.png?raw=true "simple vs gru dev accuracy")
 
+clearly better.
+
 ## nn_seq2seq
 
 * bidir on s1; concatenated last states
@@ -162,8 +164,8 @@ export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embed
 * MLP on s2 output with softmax
 
 ```
-export C="--learning-rate=0.01 --dev-run-freq=10000 --embedding-dim=100 --hidden-dim=100"
-./nn_seq2seq.py $C --tied-embeddings
+export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embeddings --embedding-dim=100 --hidden-dim=100"
+./nn_baseline.py $C 
 ./nn_seq2seq.py $C                   
 ```
 
