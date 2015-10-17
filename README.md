@@ -167,7 +167,9 @@ export C="--learning-rate=0.01 --dev-run-freq=10000 --embedding-dim=100 --hidden
 ./nn_seq2seq.py $C                   
 ```
 
-IMAGE HERE
+![simple_vs_seq2seq](imgs/simple_vs_seq2seq.png?raw=true "simple vs v1 seq2seq dev accuracy")
+
+first version of seq2seq no better than simple. (thought only a step to attentional model anyways..)
 
 ## nn_seq2seq_attention
 
