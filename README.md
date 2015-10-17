@@ -44,7 +44,6 @@ dev confusion
 
 # nn models
 
-<<<<<<< HEAD
 three nn models
 
 * nn_baseline: uni/bidirectional rnns (simple/gru) over s1/s2; concatenated states; MLP to softmax
