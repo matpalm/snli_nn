@@ -1,4 +1,4 @@
-B# snli hacking
+1;5BB# snli hacking
 
 hacking with the Stanford Natural Language Inference corpus http://nlp.stanford.edu/projects/snli/
 
@@ -127,7 +127,7 @@ export COMMON="--embedding-dim=50 --hidden-dim=50 --dev-run-freq=100000 --bidire
 
 ![lr_comparison](imgs/lr_comparison.png?raw=true "lr_comparison")
 
-so not stable at 0.1. still running sgd; 
+so not stable at 0.1. still running sgd;
 
 ### with tied embeddings & l2 penalty
 
@@ -165,17 +165,24 @@ clearly better.
 
 ```
 export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embeddings --embedding-dim=100 --hidden-dim=100"
-./nn_baseline.py $C 
-./nn_seq2seq.py $C                   
+./nn_baseline.py $C
+./nn_seq2seq.py $C
 ```
 
 ![simple_vs_seq2seq](imgs/simple_vs_seq2seq.png?raw=true "simple vs v1 seq2seq dev accuracy")
 
 first version of seq2seq no better than simple. (thought only a step to attentional model anyways..)
 
+## using glove pretrained
+
+time ./precompute_embeddings.py \
+ --vocab vocab.tsv \
+ --glove-data /usr/local/google/data/glove/glove.6B.300d.txt \
+ --npy snli_glove.npy
+
 ## nn_seq2seq_attention
 
-* bidir on s1; keep all output states 
+* bidir on s1; keep all output states
 * bidir on s2 with input attended over s1 states
 * MLP on s2 output with softmax
 
@@ -197,6 +204,12 @@ time cat data/snli_1.0_train.jsonl \
  | ./parse_distinct_tokens.py \
  | sort -k2 -nr \
  > token_freq.tsv
+```
+
+(and build a vocab)
+
+```
+cut -f1 token_freq.tsv | nl -v 0 | awk '{print $2 "\t" $1}' > vocab.tsv
 ```
 
 36_391 entries (nice and small!)
