@@ -207,9 +207,10 @@ time cat data/snli_1.0_train.jsonl \
 ```
 
 (and build a vocab)
+# note: reserve 0 idx for UNK token
 
 ```
-cut -f1 token_freq.tsv | nl -v 0 | awk '{print $2 "\t" $1}' > vocab.tsv
+cut -f1 token_freq.tsv | nl | awk '{print $2 "\t" $1}' > vocab.tsv
 ```
 
 36_391 entries (nice and small!)

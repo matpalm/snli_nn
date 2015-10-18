@@ -92,3 +92,4 @@ def norms(layers):
             except AttributeError:
                 pass  # no get_value (?)
     return dict(norms)
+

@@ -42,6 +42,10 @@ parser.add_argument('--bidirectional', action='store_true',
                     help='whether to build bidirectional rnns for s1 & s2')
 parser.add_argument('--tied-embeddings', action='store_true',
                     help='whether to tie embeddings for each rnn')
+parser.add_argument('--initial-embeddings',
+                    help='initial embeddings npy file. for now only applicable if --tied-embeddings. requires --embedding-vocab')
+parser.add_argument('--vocab-file',
+                    help='vocab (token -> idx) for embeddings, required if using --initial-embeddings')
 parser.add_argument('--l2-penalty', default=0.0001, type=float,
                     help='l2 penalty for params')
 parser.add_argument('--rnn-type', default="SimpleRnn",
@@ -55,13 +59,20 @@ parser.add_argument('--dump-norms', action='store_true',
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
+# check that if one of --vocab--file or --initial_embeddings is set, they are both set.
+assert not ((opts.vocab_file is None) ^ (opts.initial_embeddings is None)), "must set both"
+# furthermore these are only valid if tied embeddings (at least for now that's all implemented)
+if opts.vocab_file and not opts.tied_embeddings:
+    raise Exception("must set --tied-embeddings if using pre initialised embeddings")
+
 NUM_LABELS = 3
 
 def log(s):
     print >>sys.stderr, util.dts(), s
 
 # slurp training data, including converting of tokens -> ids
-vocab = Vocab()
+# if opts.vocab_file set read from that file, otherwise populate lookups as used
+vocab = Vocab(opts.vocab_file)
 train_x, train_y, train_stats = util.load_data(opts.train_set, vocab,
                                                update_vocab=True,
                                                max_egs=int(opts.num_from_train))
@@ -109,7 +120,7 @@ if opts.bidirectional:
 # rnn (whose gradients are managed by the rnn itself)
 if opts.tied_embeddings:
     # make shared tied embeddings helper
-    tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim)
+    tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim, opts.initial_embeddings)
     layers.append(tied_embeddings)
     # build an rnn per idx slices. rnn don't maintain their own embeddings in this case.
     slices = tied_embeddings.slices_for_idxs(idxs)
@@ -135,7 +146,7 @@ l2_sum = sum([(p**2).sum() for p in itertools.chain(*params)])
 cross_entropy_cost = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
 l2_cost = opts.l2_penalty * l2_sum
 total_cost = cross_entropy_cost + l2_cost
-            
+
 # calculate updates
 updates = []
 for layer in layers:

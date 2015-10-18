@@ -2,7 +2,8 @@
 
 # read a vocab and precompute a .npy embedding matrix. for each vocab entry that's in
 # the provided 300d glove embeddings use the glove data. if it's not, generate a random
-# vector but scale it to the median length of the glove embeddings.
+# vector but scale it to the median length of the glove embeddings. "reserve" idx 0
+# in the matrix for UNK embedding.
 import argparse
 import numpy as np
 import sys
@@ -13,10 +14,12 @@ parser.add_argument("--glove-data", required=True, help="glove data. ssv, token,
 parser.add_argument("--npy", required=True, help="npy output")
 opts = parser.parse_args()
 
-# slurp vocab entries. assume idxs are valid, ie 0 < i < |v|, no dups, no gaps, etc
+# slurp vocab entries. assume idxs are valid, ie 1 < i < |v|, no dups, no gaps, etc
+# (recall reserving 0 for UNK)
 vocab = {}  # token => idx
 for line in open(opts.vocab, "r"):
     token, idx = line.strip().split("\t")
+    assert idx != "0", "expecting to reserve 0 for UNK"
     vocab[token] = int(idx)
 print "vocab has", len(vocab), "entries"
 
@@ -35,7 +38,7 @@ for line in open(opts.glove_data, "r"):
         glove_embedding = np.array(cols[1:], dtype=np.float32)
         if embeddings is None:
             glove_dimensionality = len(glove_embedding)
-            embeddings = np.empty((len(vocab), glove_dimensionality), dtype=np.float32)
+            embeddings = np.empty((len(vocab)+1, glove_dimensionality), dtype=np.float32)  # +1 for unk
         assert len(glove_embedding) == glove_dimensionality, "differing dimensionality in glove data?"
         embeddings[vocab[token]] = glove_embedding
         tokens_requiring_random.remove(token)
@@ -45,11 +48,16 @@ median_glove_embedding_norm = np.median(glove_embedding_norms)
 
 print >>sys.stderr, "after passing over glove there are", len(tokens_requiring_random), \
     "tokens requiring a random alloc"
-for token in tokens_requiring_random:
+
+def random_embedding():
     random_embedding = np.random.randn(1, glove_dimensionality)
     random_embedding /= np.linalg.norm(random_embedding)
     random_embedding *= median_glove_embedding_norm
-    embeddings[vocab[token]] = random_embedding
+    return random_embedding
+
+embeddings[0] = random_embedding()
+for token in tokens_requiring_random:
+    embeddings[vocab[token]] = random_embedding()
 
 # write embeddings npy to disk
 np.save(opts.npy, embeddings)
