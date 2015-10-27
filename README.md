@@ -1,4 +1,4 @@
-1;5BB# snli hacking
+# snli hacking
 
 hacking with the Stanford Natural Language Inference corpus http://nlp.stanford.edu/projects/snli/
 
@@ -175,10 +175,15 @@ first version of seq2seq no better than simple. (thought only a step to attentio
 
 ## using glove pretrained
 
+```
 time ./precompute_embeddings.py \
  --vocab vocab.tsv \
  --glove-data /usr/local/google/data/glove/glove.6B.300d.txt \
  --npy snli_glove.npy
+```
+
+![init_embeddings.train_cost](imgs/init_embeddings.train_cost.png?raw=true "init_embeddings.train_cost")
+![init_embeddings.dev_acc](imgs/init_embeddings.dev_acc.png?raw=true "init_embeddings.dev_acc")
 
 ## nn_seq2seq_attention
 
