@@ -157,22 +157,6 @@ export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embed
 
 clearly better.
 
-## nn_seq2seq
-
-* bidir on s1; concatenated last states
-* bidir on s2 with added context (per timestep) directly from s1 output
-* MLP on s2 output with softmax
-
-```
-export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embeddings --embedding-dim=100 --hidden-dim=100"
-./nn_baseline.py $C
-./nn_seq2seq.py $C
-```
-
-![simple_vs_seq2seq](imgs/simple_vs_seq2seq.png?raw=true "simple vs v1 seq2seq dev accuracy")
-
-first version of seq2seq no better than simple. (thought only a step to attentional model anyways..)
-
 ## using glove pretrained
 
 ```
@@ -193,6 +177,22 @@ export C="--bidirectional --tied-embeddings --embedding-dim=300"
 
 whereas training cost is slightly lower in the random embeddings case the dev accuracy is better 
 with the glove embeddings (though not by much; see dev_accuracy y scale)
+
+## nn_seq2seq
+
+* bidir on s1; concatenated last states
+* bidir on s2 with added context (per timestep) directly from s1 output
+* MLP on s2 output with softmax
+
+```
+export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embeddings --embedding-dim=100 --hidden-dim=100"
+./nn_baseline.py $C
+./nn_seq2seq.py $C
+```
+
+![simple_vs_seq2seq](imgs/simple_vs_seq2seq.png?raw=true "simple vs v1 seq2seq dev accuracy")
+
+first version of seq2seq no better than simple. (thought only a step to attentional model anyways..)
 
 ## nn_seq2seq_attention
 
