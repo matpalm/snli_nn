@@ -176,10 +176,16 @@ first version of seq2seq no better than simple. (thought only a step to attentio
 ## using glove pretrained
 
 ```
+# convert glove embeddings (based on vocab)
 time ./precompute_embeddings.py \
  --vocab vocab.tsv \
- --glove-data /usr/local/google/data/glove/glove.6B.300d.txt \
+ --glove-data glove.6B.300d.txt \
  --npy snli_glove.npy
+
+# run with / without initial embeddings
+export C="--bidirectional --tied-embeddings --embedding-dim=300"
+./nn_baseline.py $C
+./nn_baseline.py $C --vocab-file vocab.tsv --initial-embeddings snli_glove.npy
 ```
 
 ![init_embeddings.train_cost](imgs/init_embeddings.train_cost.png?raw=true "init_embeddings.train_cost")
