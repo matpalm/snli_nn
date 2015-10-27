@@ -185,6 +185,9 @@ time ./precompute_embeddings.py \
 ![init_embeddings.train_cost](imgs/init_embeddings.train_cost.png?raw=true "init_embeddings.train_cost")
 ![init_embeddings.dev_acc](imgs/init_embeddings.dev_acc.png?raw=true "init_embeddings.dev_acc")
 
+whereas training cost is slightly lower in the random embeddings case the dev accuracy is better 
+with the glove embeddings (though not by much; see dev_accuracy y scale)
+
 ## nn_seq2seq_attention
 
 * bidir on s1; keep all output states
@@ -194,7 +197,6 @@ time ./precompute_embeddings.py \
 # TODOS
 
 * clipping
-* pre-seed embeddings
 * dropout
 * larger MLP? (deeper and larger hidden layer) ?
 * unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
