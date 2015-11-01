@@ -14,6 +14,7 @@ from tied_embeddings import TiedEmbeddings
 import time
 import theano
 import theano.tensor as T
+import tokenise_parse
 import util
 from updates import vanilla, rmsprop
 from vocab import Vocab
@@ -56,6 +57,8 @@ parser.add_argument('--swap-symmetric-examples', action='store_true',
                     help='if set we flip s1/s2 for symmetric labels (contra or neutral')
 parser.add_argument('--dump-norms', action='store_true',
                     help='dump l2 norms of all params with stats')
+parser.add_argument('--parse-mode', default='BINARY_WITHOUT_PARENTHESIS',
+                    help='what parse type to use; BINARY_WITHOUT_PARENTHESIS | BINARY_WITH_PARENTHESIS | PARSE_WITH_OPEN_CLOSE_TAGS')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
@@ -75,11 +78,13 @@ def log(s):
 vocab = Vocab(opts.vocab_file)
 train_x, train_y, train_stats = util.load_data(opts.train_set, vocab,
                                                update_vocab=True,
-                                               max_egs=int(opts.num_from_train))
+                                               max_egs=int(opts.num_from_train),
+                                               parse_mode=opts.parse_mode)
 log("train_stats %s %s" % (len(train_x), train_stats))
 dev_x, dev_y, dev_stats = util.load_data(opts.dev_set, vocab,
                                          update_vocab=False,
-                                         max_egs=int(opts.num_from_dev))
+                                         max_egs=int(opts.num_from_dev),
+                                         parse_mode=opts.parse_mode)
 log("dev_stats %s %s" % (len(dev_x), dev_stats))
 
 # input/output vars

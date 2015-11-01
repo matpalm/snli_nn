@@ -4,17 +4,13 @@ import numpy as np
 import random
 import sys
 import theano
+import theano.tensor as T
 import time
+import tokenise_parse
 
-def tokens_in_parse(parse):
-    for token in parse.split(" "):
-        if token != "(" and token != ")":
-            yield token.lower()
-
-def tokens_in_sentences(eg):
-    tokens_in_s1 = list(tokens_in_parse(eg['sentence1_binary_parse']))
-    tokens_in_s2 = list(tokens_in_parse(eg['sentence2_binary_parse']))
-    return (tokens_in_s1, tokens_in_s2)
+def tokens_in_sentences(eg, parse_mode):
+    return (tokenise_parse.tokens_for(eg, 1, parse_mode),
+            tokenise_parse.tokens_for(eg, 2, parse_mode))
 
 LABELS = ['contradiction', 'neutral', 'entailment']
 
@@ -27,7 +23,8 @@ def label_for(eg):
 def symmetric_example(label):
     return LABELS[label] != 'entailment'
 
-def load_data(dataset, vocab, max_egs=None, update_vocab=True):
+def load_data(dataset, vocab, max_egs=None, update_vocab=True, 
+              parse_mode="BINARY_WITHOUT_PARENTHESIS"):
     stats = Counter()
     x, y = [], []
     for line in open(dataset, "r"):
@@ -36,7 +33,7 @@ def load_data(dataset, vocab, max_egs=None, update_vocab=True):
         if l is None:
             stats['n_ignored'] += 1
         else:
-            s1, s2 = tokens_in_sentences(eg)
+            s1, s2 = tokens_in_sentences(eg, parse_mode)
             s1 = vocab.ids_for_tokens(s1, update_vocab)
             stats['n_tokens'] += len(s1)
             stats['n_unk'] += len(s1) - len(filter(None, s1))
@@ -92,4 +89,15 @@ def norms(layers):
             except AttributeError:
                 pass  # no get_value (?)
     return dict(norms)
+
+def _clip(gradient, rescale=5.0):
+    grad_norm = gradient.norm(L=2)
+    rescaling_factor = rescale / T.maximum(rescale, grad_norm)
+    return gradient * rescaling_factor
+
+def clipped(gradients, rescale=5.0):
+    if type(gradients) == list:
+        return [_clip(g, rescale) for g in gradients]
+    else:
+        return _clip(gradients, rescale)
 

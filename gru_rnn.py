@@ -52,12 +52,12 @@ class GruRnn(object):
 
     def updates_wrt_cost(self, cost, learning_rate):
         # calculate dense updates
-        gradients = T.grad(cost=cost, wrt=self.dense_params())
+        gradients = util.clipped(T.grad(cost=cost, wrt=self.dense_params()))
         updates = self.update_fn(self.dense_params(), gradients, learning_rate)
         # calculate a sparse update for embeddings if we are managing our own
         # embedding matrix
         if not self.using_shared_embeddings:
-            gradient = T.grad(cost=cost, wrt=self.sequence_embeddings)
+            gradient = util.clipped(T.grad(cost=cost, wrt=self.sequence_embeddings))
             updates.append((self.Wx, T.inc_subtensor(self.sequence_embeddings,
                                                      -learning_rate * gradient)))
         return updates

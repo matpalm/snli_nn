@@ -43,7 +43,7 @@ class TiedEmbeddings(object):
     def updates_wrt_cost(self, cost, learning_rate):
         # _one_ update for the embedding matrix; regardless of the number of rnns running
         # over subslices
-        gradient = T.grad(cost=cost, wrt=self.concatenated_sequence_embeddings)
+        gradient = util.clipped(T.grad(cost=cost, wrt=self.concatenated_sequence_embeddings))
         return [(self.shared_embeddings,
                  T.inc_subtensor(self.concatenated_sequence_embeddings, -learning_rate * gradient))]
 

@@ -29,7 +29,7 @@ class ConcatWithSoftmax(object):
         return self.dense_params()
 
     def updates_wrt_cost(self, cost, learning_rate):
-        gradients = T.grad(cost=cost, wrt=self.dense_params())
+        gradients = util.clipped(T.grad(cost=cost, wrt=self.dense_params()))
         return self.update_fn(self.dense_params(), gradients, learning_rate)
 
     def prob_pred(self):

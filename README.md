@@ -6,16 +6,13 @@ hacking with the Stanford Natural Language Inference corpus http://nlp.stanford.
 
 ( all for 100 dev )
 
-model | # train | dev accuracy
------ | ----- | --------
-log_reg_baseline.py | 100 | 0.35
-log_reg_baseline.py | 10K | 0.56
-log_reg_baseline.py | 500K+ (all) | 0.667
-nn_baseline.py (elman) | 100 | 0.39
-nn_baseline.py (elman) | 10K | 0.58
-nn_baseline.py (elman) | all | 0.684
-nn_baseline.py (gru) | all | *0.741*
-nn_seq2seq.py (elman) | all | ???
+model | dev accuracy
+----- |  --------
+log_reg_baseline.py | 0.667
+nn_baseline.py (elman) | 0.58
+nn_baseline.py (elman) | 0.684
+nn_baseline.py (gru) | *0.745*
+nn_seq2seq.py (elman) | 0.682
 
 # simple logistic regression baseline
 
@@ -47,7 +44,7 @@ dev confusion
 three nn models
 
 * nn_baseline: uni/bidirectional rnns (simple/gru) over s1/s2; concatenated states; MLP to softmax
-* nn_seq2seq: bidirectional rnn over s1; first & last state concatenated; feed as context to bidirectional rnn over s2; MLP to softmax (WIP)
+* nn_seq2seq: bidirectional rnn over s1; first & last state concatenated; feed as context to bidirectional rnn over s2; MLP to softmax
 * nn_seq2seq_attention: as nn_seq2seq but attend back to all states of s1, not just first/last; MLP to softmax (WIP)
 
 ## nn_baseline
@@ -178,11 +175,35 @@ export C="--bidirectional --tied-embeddings --embedding-dim=300"
 whereas training cost is slightly lower in the random embeddings case the dev accuracy is better 
 with the glove embeddings (though not by much; see dev_accuracy y scale)
 
+## different versions of parse
+
+snli dataset provides dependency parses for each sentence; eg ```(ROOT (NP (NP (DT a) (NN person)) (PP (IN by) (NP (DT a) (NN car)))))```
+
+we can handle this parse in three ways (the default so far has been equivalent to BINARY_WITHOUT_PARENTHESIS). 
+( we include JUST_OPEN_CLOSE_TAGS as an experiment regarding the a lower bound we get from only using pos tags )
+
+parse_mode | eg tokens
+----- |  --------
+BINARY_WITHOUT_PARENTHESIS | a person by a car
+BINARY_WITH_PARENTHESIS | ( ( a person ) ( by ( a car ) ) )
+PARSE_WITH_OPEN_CLOSE_TAGS | (NP (NP (DT a DT) (NN person NN) NP) (PP (IN by IN) (NP (DT a DT) (NN car NN) NP) PP) NP) NP)
+JUST_OPEN_CLOSE_TAGS | (NP (NP (DT DT) (NN NN) NP) (PP (IN IN) (NP (DT DT) (NN NN) NP) PP) NP) NP)
+
+parse_mode | s1 length quantiles | s2 length quantiles | top tokens
+---------- | ------------------- | ------------------- | ----------
+BINARY_WITHOUT_PARENTHESIS | [2, 10, 13, 17, 82] | [1, 6, 8, 10, 62] | [(u'a', 1_441_039), (u'.', 964_030), (u'the', 535_493), (u'in', 407_662), (u'is', 374_068)]
+BINARY_WITH_PARENTHESIS | [4, 28, 37, 49, 244.] | [1, 16, 22, 28, 184] | [(u')', 11_158_943), (u'(', 11_158_943), (u'a', 1_441_039), (u'.', 964_030), (u'the', 535_493)]
+PARSE_WITH_OPEN_CLOSE_TAGS | [8, 44, 58, 77, 369] | [5, 28, 35, 44, 298] | [(u'(NP', 4_438_313), (u'NP)', 4_438_313), (u'(NN', 2_818_779), (u'NN)', 2_818_779), (u'(DT', 2_127_006)]
+JUST_OPEN_CLOSE_TAGS | [6, 34, 44, 60, 290] | []4, 22, 28, 34, 236] | [(u'(NP', 4_438_313), (u'NP)', 4_438_313), (u'(NN', 2_818_779), (u'NN)', 2_818_779), (u'(DT', 2_127_006)]
+
 ## nn_seq2seq
 
 * bidir on s1; concatenated last states
 * bidir on s2 with added context (per timestep) directly from s1 output
 * MLP on s2 output with softmax
+* tied embeddings
+* _no_ gru
+* _no_ pretrained embeddings
 
 ```
 export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embeddings --embedding-dim=100 --hidden-dim=100"
@@ -202,7 +223,8 @@ first version of seq2seq no better than simple. (thought only a step to attentio
 
 # TODOS
 
-* clipping
+* decaying lr; eg start at 1.0 then decay over time (eg 'reasoning about entailment')
+* more simple moemntum
 * dropout
 * larger MLP? (deeper and larger hidden layer) ?
 * unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
