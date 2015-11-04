@@ -227,6 +227,7 @@ first version of seq2seq no better than simple. (thought only a step to attentio
 * more simple moemntum
 * dropout
 * larger MLP? (deeper and larger hidden layer) ?
+* sanity check swap_symmetric again; if only with neutral egs
 * unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
 * preloading of data; it's slow to start
 * unrolling? maybe not bother for hacking. might be finally up to a point where batching speed matters...

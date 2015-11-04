@@ -36,8 +36,8 @@ parser.add_argument('--update-fn', default='vanilla', help='vanilla (sgd) or rms
 parser.add_argument('--embedding-dim', default=100, type=int,
                     help='embedding node dimensionality')
 parser.add_argument('--hidden-dim', default=50, type=int, help='hidden node dimensionality')
-parser.add_argument('--tied-embeddings', action='store_true',
-                    help='whether to tie embeddings for each RNN')
+#parser.add_argument('--tied-embeddings', action='store_true',   NOT SUPPORTED YET, NEED TO FOLD INTO BIDIR WRAPPER
+#                    help='whether to tie embeddings for each RNN')
 parser.add_argument('--l2-penalty', default=0.0001, type=float,
                     help='l2 penalty for params')
 opts = parser.parse_args()
@@ -78,24 +78,31 @@ layers = []
 update_fn = globals().get(opts.update_fn)
 if update_fn is None:
     raise Exception("unknown update function [%s]" % opts.update_fn)
-def rnn(idxs=None, sequence_embeddings=None, context=None):
-    return SimpleRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim, opts,
-                     update_fn, idxs=idxs, sequence_embeddings=sequence_embeddings,
-                     context=context)
+
+#def rnn(idxs=None, sequence_embeddings=None, context=None):
+#    return GruRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim, opts,
+#                  update_fn, idxs=idxs, sequence_embeddings=sequence_embeddings,
+#                  context=context)
+
+s1_bidir = BidirectionalGruRnn('s1_bidir', vocab.size(), opts.embedding_dim, 
+                               opts.hidden_dim, opts, update_fn, s1_idxs)
+
+s2_bidir = BidirectionalGruRnn('s1_bidir', vocab.size(), opts.embedding_dim, 
+                               opts.hidden_dim, opts, update_fn, s2_idxs)
 
 # idxs for pass over s1 & s2; one for each direction
-all_idxs = [s1_idxs, s1_idxs[::-1], s2_idxs, s2_idxs[::-1]]
+#all_idxs = [s1_idxs, s1_idxs[::-1], s2_idxs, s2_idxs[::-1]]
 
 # if we are running with tied embeddings we will build our rnns to use
 # embedding slices, not indexes. note: we can only have _one_ tied_embeddings helper
 # so we have to build this now for s1 and s2 rnns.
-slices = None
-if opts.tied_embeddings:
+#slices = None
+#if opts.tied_embeddings:
     # make shared tied embeddings helper
-    tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim)
-    layers.append(tied_embeddings)
+#    tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim)
+#    layers.append(tied_embeddings)
     # build an rnn per idx slices. rnn don't maintain their own embeddings in this case.
-    slices = tied_embeddings.slices_for_idxs(all_idxs)
+#    slices = tied_embeddings.slices_for_idxs(all_idxs)
 
 # shared initial zero state for all rnns
 h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
@@ -110,18 +117,18 @@ for i in [0, 1]:  # indexes of s1 idxs or slices
     layers.append(s1_rnn)
     s1_final_states.append(s1_rnn.final_state_given(h0))
 
-# concat the final s1 states.
+# concat the final s1 states; this provides the context for s2.
 s1_states = T.concatenate(s1_final_states)
 
-# build s2 rnns, including this additional context from s1, and collect final states.
-s2_final_states = []
+# build s2 rnns, this time we record each output state (not just the last ones)
+s2_states = []
 for i in [2, 3]:  # indexes of s2 idxs or slices
     if slices:
         s2_rnn = rnn(sequence_embeddings=slices[i], context=s1_states)
     else:
         s2_rnn = rnn(idxs=all_idxs[i], context=s1_states)
     layers.append(s2_rnn)
-    s2_final_states.append(s2_rnn.final_state_given(h0))
+    s2_states.append(s2_rnn.all_hidden_states_given(h0))
 
 # finally concat s2 states and pass up through MLP to softmaxs
 #concat_with_softmax = ConcatWithSoftmax(s2_final_states, NUM_LABELS, opts.hidden_dim, opts.update_fn)

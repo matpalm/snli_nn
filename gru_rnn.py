@@ -6,10 +6,11 @@ from updates import vanilla, rmsprop
 
 class GruRnn(object):
     def __init__(self, name, n_in, n_embedding, n_hidden, opts, update_fn,
-                 idxs=None, sequence_embeddings=None, context=None):
+                 h0, idxs=None, sequence_embeddings=None):
         assert (idxs is None) ^ (sequence_embeddings is None)
         self.name_ = name
         self.update_fn = update_fn
+        self.h0 = h0
 
         if idxs is not None:
             # not tying weights, build our own set of embeddings
@@ -65,20 +66,27 @@ class GruRnn(object):
     def recurrent_step(self, embedding, h_t_minus_1):
         # reset gate; how much will we zero out h_t_minus_1 in our candidate
         # next hidden state calculation?
-        r = T.nnet.sigmoid(T.dot(self.Ur, h_t_minus_1) + T.dot(self.Wr, embedding) +
+        r = T.nnet.sigmoid(T.dot(self.Ur, h_t_minus_1) +
+                           T.dot(self.Wr, embedding) +
                            self.br)
         # candidate hidden state
         h_t_candidate = T.tanh(r * T.dot(self.Uh, h_t_minus_1) +
-                               T.dot(self.Wh, embedding) + self.bh)
+                               T.dot(self.Wh, embedding) +
+                               self.bh)
         # carry gate; how much of h_t_minus_1 will we take with h_candidate?
-        z = T.nnet.sigmoid(T.dot(self.Uz, h_t_minus_1) + T.dot(self.Wz, embedding) +
+        z = T.nnet.sigmoid(T.dot(self.Uz, h_t_minus_1) +
+                           T.dot(self.Wz, embedding) +
                            self.bz)
         # actual hidden state affine combo of last state and candidate state
         h_t = (1 - z) * h_t_minus_1 + z * h_t_candidate
         return [h_t, h_t]
 
-    def final_state_given(self, h0):
+    def all_states(self):
         [_h_t, h_t], _ = theano.scan(fn=self.recurrent_step,
                                      sequences=[self.sequence_embeddings],
-                                     outputs_info=[h0, None])
-        return h_t[-1]
+                                     outputs_info=[self.h0, None])
+        return h_t
+
+    def final_state(self):
+        return self.all_states()[-1]
+

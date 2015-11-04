@@ -99,6 +99,7 @@ layers = []
 
 # helper to build an rnn across s1 or s2.
 # bidirectional passes are made with explicitly reversed idxs
+h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
 rnn_fn = globals().get(opts.rnn_type)
 if rnn_fn is None:
     raise Exception("unknown rnn type [%s]" % opts.rnn_type)
@@ -107,7 +108,7 @@ if update_fn is None:
     raise Exception("unknown update function [%s]" % opts.update_fn)
 def rnn(name, idxs=None, sequence_embeddings=None):
     return rnn_fn(name, vocab.size(), opts.embedding_dim, opts.hidden_dim, opts,
-                  update_fn, idxs=idxs, sequence_embeddings=sequence_embeddings)
+                  update_fn, h0, idxs=idxs, sequence_embeddings=sequence_embeddings)
 rnns = None
 
 # decide set of sequence idxs we'll be processing. there will always the two
@@ -125,7 +126,8 @@ if opts.bidirectional:
 # rnn (whose gradients are managed by the rnn itself)
 if opts.tied_embeddings:
     # make shared tied embeddings helper
-    tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim, opts.initial_embeddings)
+    tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim,
+                                     opts.initial_embeddings)
     layers.append(tied_embeddings)
     # build an rnn per idx slices. rnn don't maintain their own embeddings in this case.
     slices = tied_embeddings.slices_for_idxs(idxs)
@@ -136,8 +138,7 @@ else:
 layers.extend(rnns)
 
 # concat final states of rnns, do a final linear combo and apply softmax for prediction.
-h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
-final_rnn_states = [rnn.final_state_given(h0) for rnn in rnns]
+final_rnn_states = [rnn.final_state() for rnn in rnns]
 concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim,
                                         opts.update_fn)
 layers.append(concat_with_softmax)

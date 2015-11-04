@@ -6,15 +6,11 @@ import util
 
 class SimpleRnn(object):
     def __init__(self, name, n_in, n_embedding, n_hidden, opts, update_fn,
-                 idxs=None, sequence_embeddings=None, context=None):
+                 h0, idxs=None, sequence_embeddings=None):
         assert (idxs is None) ^ (sequence_embeddings is None)
         self.name_ = name
         self.update_fn = update_fn
-
-        # context represents (potential) extra input to each recurrent call for
-        # nn_baseline this is not used but for seq2seq this is passed to s2 as the
-        # output of s1
-        self.context = context
+        self.h0 = h0
 
         if idxs is not None:
             # not tying weights, build our own set of embeddings
@@ -35,21 +31,11 @@ class SimpleRnn(object):
         # bias
         self.Wb = util.shared(util.zeros((n_hidden,)), 'Wb')
 
-        # we only need context -> hidden when we have a context that we need to mix
-        # into our hidden state
-        if self.context:
-            # context -> hidden
-            self.Whc = util.sharedMatrix(n_hidden, 2 * n_hidden, 'Whc',
-                                         orthogonal_init=True)
-
     def name(self):
         return self.name_
 
     def dense_params(self):
-        p = [self.Whh, self.Whe, self.Wb]
-        if self.context:
-            p.append(self.Whc)
-        return p
+        return [self.Whh, self.Whe, self.Wb]
 
     def params_for_l2_penalty(self):
         params = self.dense_params()
@@ -69,22 +55,17 @@ class SimpleRnn(object):
                                                      -learning_rate * gradient)))
         return updates
 
-    def recurrent_step(self, embedding, h_t_minus_1, context=None):
-        hidden_state = T.dot(self.Whh, h_t_minus_1) + T.dot(self.Whe, embedding)
-        if context:
-            hidden_state += T.dot(self.Whc, context)
-        hidden_state += self.Wb
-        h_t = T.tanh(hidden_state)
+    def recurrent_step(self, embedding, h_t_minus_1):
+        h_t = T.tanh(T.dot(self.Whh, h_t_minus_1) +
+                     T.dot(self.Whe, embedding) +
+                     self.Wb)
         return [h_t, h_t]
 
-    def final_state_given(self, h0):
-        if self.context:
-            [_h_t, h_t], _ = theano.scan(fn=self.recurrent_step,
-                                         sequences=[self.sequence_embeddings],
-                                         non_sequences=[self.context],
-                                         outputs_info=[h0, None])
-        else:
-            [_h_t, h_t], _ = theano.scan(fn=self.recurrent_step,
-                                         sequences=[self.sequence_embeddings],
-                                         outputs_info=[h0, None])
-        return h_t[-1]
+    def all_states(self):
+        [_h_t, h_t], _ = theano.scan(fn=self.recurrent_step,
+                                     sequences=[self.sequence_embeddings],
+                                     outputs_info=[self.h0, None])
+        return h_t
+
+    def final_state(self):
+        return self.all_states()[-1]
