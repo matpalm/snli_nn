@@ -196,7 +196,30 @@ BINARY_WITH_PARENTHESIS | [4, 28, 37, 49, 244.] | [1, 16, 22, 28, 184] | [(u')',
 PARSE_WITH_OPEN_CLOSE_TAGS | [8, 44, 58, 77, 369] | [5, 28, 35, 44, 298] | [(u'(NP', 4_438_313), (u'NP)', 4_438_313), (u'(NN', 2_818_779), (u'NN)', 2_818_779), (u'(DT', 2_127_006)]
 JUST_OPEN_CLOSE_TAGS | [6, 34, 44, 60, 290] | []4, 22, 28, 34, 236] | [(u'(NP', 4_438_313), (u'NP)', 4_438_313), (u'(NN', 2_818_779), (u'NN)', 2_818_779), (u'(DT', 2_127_006)]
 
+```
+export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional
+          --tied-embeddings --embedding-dim=100 --hidden-dim=100 --rnn-type=GruRnn"
+./nn_baseline.py $C --parse-mode=BINARY_WITHOUT_PARENTHESIS
+./nn_baseline.py $C --parse-mode=BINARY_WITH_PARENTHESIS
+./nn_baseline.py $C --parse-mode=PARSE_WITH_OPEN_CLOSE_TAGS
+./nn_baseline.py $C --parse-mode=JUST_OPEN_CLOSE_TAGS
+```
+
 ![parse_comparisons](imgs/parse_comparisons.png?raw=true "parse comparisons")
+
+## dropout
+
+hardly overfitting on training but, still, does dropout help with our generalisations?
+
+```
+export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional 
+          --tied-embeddings --embedding-dim=100 --hidden-dim=100 --rnn-type=GruRnn"
+./nn_baseline.py $C --keep-prob=0.25
+./nn_baseline.py $C --keep-prob=0.5
+./nn_baseline.py $C --keep-prob=0.75
+./nn_baseline.py $C --keep-prob=1.0
+```
+
 
 ## nn_seq2seq
 
@@ -227,7 +250,6 @@ first version of seq2seq no better than simple. (thought only a step to attentio
 
 * decaying lr; eg start at 1.0 then decay over time (eg 'reasoning about entailment')
 * more simple moemntum
-* dropout
 * larger MLP? (deeper and larger hidden layer) ?
 * sanity check swap_symmetric again; if only with neutral egs
 * unidir on s2 attending back to bidir run over s1; then just MLP on s2 output
