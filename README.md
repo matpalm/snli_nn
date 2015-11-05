@@ -196,6 +196,8 @@ BINARY_WITH_PARENTHESIS | [4, 28, 37, 49, 244.] | [1, 16, 22, 28, 184] | [(u')',
 PARSE_WITH_OPEN_CLOSE_TAGS | [8, 44, 58, 77, 369] | [5, 28, 35, 44, 298] | [(u'(NP', 4_438_313), (u'NP)', 4_438_313), (u'(NN', 2_818_779), (u'NN)', 2_818_779), (u'(DT', 2_127_006)]
 JUST_OPEN_CLOSE_TAGS | [6, 34, 44, 60, 290] | []4, 22, 28, 34, 236] | [(u'(NP', 4_438_313), (u'NP)', 4_438_313), (u'(NN', 2_818_779), (u'NN)', 2_818_779), (u'(DT', 2_127_006)]
 
+![parse_comparisons](imgs/parse_comparisons.png?raw=true "parse comparisons")
+
 ## nn_seq2seq
 
 * bidir on s1; concatenated last states
