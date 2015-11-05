@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+from bidirectional_gru_rnn import BidirectionalGruRnn
 from concat_with_softmax import ConcatWithSoftmax
 #from gru_rnn import GruRnn
 import itertools
@@ -32,14 +33,16 @@ parser.add_argument("--num-epochs", default=-1, type=int,
 parser.add_argument("--max-run-time-sec", default=-1, type=int,
                     help='max secs to run before early stopping. -1 => dont early stop')
 parser.add_argument('--learning-rate', default=0.01, type=float, help='learning rate')
-parser.add_argument('--update-fn', default='vanilla', help='vanilla (sgd) or rmsprop')
+parser.add_argument('--update-fn', default='vanilla',
+                    help='vanilla (sgd) or rmsprop. not applied to embeddings')
 parser.add_argument('--embedding-dim', default=100, type=int,
                     help='embedding node dimensionality')
-parser.add_argument('--hidden-dim', default=50, type=int, help='hidden node dimensionality')
-#parser.add_argument('--tied-embeddings', action='store_true',   NOT SUPPORTED YET, NEED TO FOLD INTO BIDIR WRAPPER
-#                    help='whether to tie embeddings for each RNN')
+parser.add_argument('--hidden-dim', default=50, type=int,
+                    help='hidden node dimensionality')
 parser.add_argument('--l2-penalty', default=0.0001, type=float,
                     help='l2 penalty for params')
+parser.add_argument('--gru-initial-bias', default=2, type=int,
+                    help='initial gru bias for r & z. higher => more like SimpleRnn')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
@@ -59,7 +62,7 @@ dev_x, dev_y, dev_stats = util.load_data(opts.dev_set, vocab,
                                          max_egs=int(opts.num_from_dev))
 log("dev_stats %s %s" % (len(dev_x), dev_stats))
 
-# input/output vars
+# input/output example vars
 s1_idxs = T.ivector('s1')  # sequence for sentence one
 s2_idxs = T.ivector('s2')  # sequence for sentence two
 actual_y = T.ivector('y')  # single for sentence pair label; 0, 1 or 2
@@ -72,67 +75,25 @@ layers = []
 # helper to build rnns. 
 # rnns over s2 have an additional context provided (from output of s1)
 # rnns over s1 have context=None
-#rnn_fn = globals().get(opts.rnn_type)
-#if rnn_fn is None:
-#    raise Exception("unknown rnn type [%s]" % opts.rnn_type)
 update_fn = globals().get(opts.update_fn)
 if update_fn is None:
     raise Exception("unknown update function [%s]" % opts.update_fn)
 
-#def rnn(idxs=None, sequence_embeddings=None, context=None):
-#    return GruRnn(vocab.size(), opts.embedding_dim, opts.hidden_dim, opts,
-#                  update_fn, idxs=idxs, sequence_embeddings=sequence_embeddings,
-#                  context=context)
-
-s1_bidir = BidirectionalGruRnn('s1_bidir', vocab.size(), opts.embedding_dim, 
-                               opts.hidden_dim, opts, update_fn, s1_idxs)
-
-s2_bidir = BidirectionalGruRnn('s1_bidir', vocab.size(), opts.embedding_dim, 
-                               opts.hidden_dim, opts, update_fn, s2_idxs)
-
-# idxs for pass over s1 & s2; one for each direction
-#all_idxs = [s1_idxs, s1_idxs[::-1], s2_idxs, s2_idxs[::-1]]
-
-# if we are running with tied embeddings we will build our rnns to use
-# embedding slices, not indexes. note: we can only have _one_ tied_embeddings helper
-# so we have to build this now for s1 and s2 rnns.
-#slices = None
-#if opts.tied_embeddings:
-    # make shared tied embeddings helper
-#    tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim)
-#    layers.append(tied_embeddings)
-    # build an rnn per idx slices. rnn don't maintain their own embeddings in this case.
-#    slices = tied_embeddings.slices_for_idxs(all_idxs)
-
-# shared initial zero state for all rnns
 h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
+s1_bidir = BidirectionalGruRnn('s1_bidir', vocab.size(), opts.embedding_dim, 
+                               opts.hidden_dim, opts, update_fn, h0, s1_idxs)
+s2_bidir = BidirectionalGruRnn('s1_bidir', vocab.size(), opts.embedding_dim, 
+                               opts.hidden_dim, opts, update_fn, h0, s2_idxs)
+layers.extend([s1_bidir, s2_bidir])
 
-# build s1 rnns and collect final states.
-s1_final_states = []
-for i in [0, 1]:  # indexes of s1 idxs or slices
-    if slices:
-        s1_rnn = rnn(sequence_embeddings=slices[i], context=None)
-    else:
-        s1_rnn = rnn(idxs=all_idxs[i], context=None)
-    layers.append(s1_rnn)
-    s1_final_states.append(s1_rnn.final_state_given(h0))
-
-# concat the final s1 states; this provides the context for s2.
-s1_states = T.concatenate(s1_final_states)
-
-# build s2 rnns, this time we record each output state (not just the last ones)
-s2_states = []
-for i in [2, 3]:  # indexes of s2 idxs or slices
-    if slices:
-        s2_rnn = rnn(sequence_embeddings=slices[i], context=s1_states)
-    else:
-        s2_rnn = rnn(idxs=all_idxs[i], context=s1_states)
-    layers.append(s2_rnn)
-    s2_states.append(s2_rnn.all_hidden_states_given(h0))
+# collect final states of both bidir rnns.
+final_states = s1_bidir.final_states()  # 2 vectors
+final_states.extend(s2_bidir.final_states())  # another 2 vectors
 
 # finally concat s2 states and pass up through MLP to softmaxs
-#concat_with_softmax = ConcatWithSoftmax(s2_final_states, NUM_LABELS, opts.hidden_dim, opts.update_fn)
-concat_with_softmax = ConcatWithSoftmax(s2_final_states, NUM_LABELS, opts.hidden_dim, opts.update_fn)
+# TODO: add dropout (?)
+concat_with_softmax = ConcatWithSoftmax(final_states, NUM_LABELS, opts.hidden_dim, 
+                                        opts.update_fn)
 layers.append(concat_with_softmax)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
@@ -144,8 +105,6 @@ l2_sum = sum([(p**2).sum() for p in itertools.chain(*params)])
 cross_entropy_cost = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
 l2_cost = opts.l2_penalty * l2_sum
 total_cost = cross_entropy_cost + l2_cost
-
-#TODO: a debug hook for norms too
 
 # calculate updates
 updates = []

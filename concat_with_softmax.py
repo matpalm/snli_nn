@@ -7,8 +7,10 @@ from updates import vanilla, rmsprop
 
 class ConcatWithSoftmax(object):
     def __init__(self, states, n_labels, n_hidden_previous, update_fn,
-                 training, keep_prob):
-        self.input = dropout(T.concatenate(states), training, keep_prob)
+                 training=None, keep_prob=None):
+        self.input = T.concatenate(states)
+        if training is not None:
+            self.input = dropout(self.input, training, keep_prob)
         input_size = len(states) * n_hidden_previous
 
         # input -> hidden (sized somwhere between size of input & softmax)
