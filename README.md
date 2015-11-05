@@ -209,7 +209,7 @@ export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional
 
 ## dropout
 
-hardly overfitting on training but, still, does dropout help with our generalisations?
+hardly overfitting on training but, still, does dropout help with our generalisations? (applied between final state concat and MLP)
 
 ```
 export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional 
