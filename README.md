@@ -21,8 +21,6 @@ features...
 * all tokens in sentence 1 prepended with "s1_"
 * all tokens in sentence 2 prepended with "s2_"
 
-trained on all data; tested on all dev
-
 ```
 $ time ./log_reg_baseline.py
 
@@ -108,25 +106,10 @@ $ ./nn_baseline.py --embedding-dim=50 --hidden-dim=50 \
 
 (vertical line denotes epoch)
 
-### with bidirectional
+### bidirectional vs unidirectional with tied embeddings & l2 penalty
 
-* another two rnns; in opposite directions
-* all 4 outputs concatted before MLP & softmax
-
-### checking learning rates
-
-```
-export COMMON="--embedding-dim=50 --hidden-dim=50 --dev-run-freq=100000 --bidirectional"
-./nn_baseline.py $COMMON --learning-rate=0.1
-./nn_baseline.py $COMMON --learning-rate=0.01
-./nn_baseline.py $COMMON --learning-rate=0.001
-```
-
-![lr_comparison](imgs/lr_comparison.png?raw=true "lr_comparison")
-
-so not stable at 0.1. still running sgd;
-
-### with tied embeddings & l2 penalty
+* bidirectional being another two rnns; in opposite directions; with all 4 outputs concatted before MLP & softmax
+* tied embeddings => use single embedding matrix instead of 2 seperate for unidir (and 4 seperate for bidir)
 
 ```
 export COMMON="--embedding-dim=50 --hidden-dim=50 --learning-rate=0.01 --dev-run-freq=100000"
@@ -152,7 +135,7 @@ export C="--learning-rate=0.01 --dev-run-freq=10000 --bidirectional --tied-embed
 
 ![simple_vs_gru](imgs/simple_vs_gru.png?raw=true "simple vs gru dev accuracy")
 
-clearly better.
+better so will continue with gru by default
 
 ## using glove pretrained
 
@@ -175,7 +158,7 @@ export C="--bidirectional --tied-embeddings --embedding-dim=300"
 whereas training cost is slightly lower in the random embeddings case the dev accuracy is better 
 with the glove embeddings (though not by much; see dev_accuracy y scale)
 
-## different versions of parse
+## using different versions of parse
 
 snli dataset provides dependency parses for each sentence; eg ```(ROOT (NP (NP (DT a) (NN person)) (PP (IN by) (NP (DT a) (NN car)))))```
 
