@@ -1,12 +1,16 @@
+from dropout import dropout
 import math
+import theano
 import theano.tensor as T
 import util
 from updates import vanilla, rmsprop
 
 class ConcatWithSoftmax(object):
-    def __init__(self, states, n_labels, n_hidden_previous, update_fn):
-        self.input = T.concatenate(states)
+    def __init__(self, states, n_labels, n_hidden_previous, update_fn,
+                 training, keep_prob):
+        self.input = dropout(T.concatenate(states), training, keep_prob)
         input_size = len(states) * n_hidden_previous
+
         # input -> hidden (sized somwhere between size of input & softmax)
         n_hidden = int(math.sqrt(input_size * n_labels))
         self.Wih = util.sharedMatrix(input_size, n_hidden, 'Wih')

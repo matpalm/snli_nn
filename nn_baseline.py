@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 from concat_with_softmax import ConcatWithSoftmax
+from dropout import APPLY_DROPOUT, NO_DROPOUT
 from gru_rnn import GruRnn
 import itertools
 import json
@@ -44,9 +45,11 @@ parser.add_argument('--bidirectional', action='store_true',
 parser.add_argument('--tied-embeddings', action='store_true',
                     help='whether to tie embeddings for each rnn')
 parser.add_argument('--initial-embeddings',
-                    help='initial embeddings npy file. for now only applicable if --tied-embeddings. requires --embedding-vocab')
+                    help='initial embeddings npy file. for now only applicable if'
+                         ' --tied-embeddings. requires --embedding-vocab')
 parser.add_argument('--vocab-file',
-                    help='vocab (token -> idx) for embeddings, required if using --initial-embeddings')
+                    help='vocab (token -> idx) for embeddings,'
+                         ' required if using --initial-embeddings')
 parser.add_argument('--l2-penalty', default=0.0001, type=float,
                     help='l2 penalty for params')
 parser.add_argument('--rnn-type', default="SimpleRnn",
@@ -57,16 +60,23 @@ parser.add_argument('--swap-symmetric-examples', action='store_true',
                     help='if set we flip s1/s2 for symmetric labels (contra or neutral')
 parser.add_argument('--dump-norms', action='store_true',
                     help='dump l2 norms of all params with stats')
+parser.add_argument('--keep-prob', default=1.0, type=float,
+                    help='post concat, pre MLP, dropout keep probability. 1.0 => noop')
 parser.add_argument('--parse-mode', default='BINARY_WITHOUT_PARENTHESIS',
-                    help='what parse type to use; BINARY_WITHOUT_PARENTHESIS | BINARY_WITH_PARENTHESIS | PARSE_WITH_OPEN_CLOSE_TAGS')
+                    help='what parse type to use; BINARY_WITHOUT_PARENTHESIS'
+                         '| BINARY_WITH_PARENTHESIS | PARSE_WITH_OPEN_CLOSE_TAGS')
 opts = parser.parse_args()
 print >>sys.stderr, opts
 
 # check that if one of --vocab--file or --initial_embeddings is set, they are both set.
 assert not ((opts.vocab_file is None) ^ (opts.initial_embeddings is None)), "must set both"
-# furthermore these are only valid if tied embeddings (at least for now that's all implemented)
+# furthermore these are only valid if tied embeddings (at least for now that's all
+# implemented)
 if opts.vocab_file and not opts.tied_embeddings:
     raise Exception("must set --tied-embeddings if using pre initialised embeddings")
+
+# sanity check other opts
+assert opts.keep_prob >= 0.0 and opts.keep_prob <= 1.0
 
 NUM_LABELS = 3
 
@@ -87,10 +97,15 @@ dev_x, dev_y, dev_stats = util.load_data(opts.dev_set, vocab,
                                          parse_mode=opts.parse_mode)
 log("dev_stats %s %s" % (len(dev_x), dev_stats))
 
-# input/output vars
+# input/output example vars
 s1_idxs = T.ivector('s1')  # sequence for sentence one
 s2_idxs = T.ivector('s2')  # sequence for sentence two
 actual_y = T.ivector('y')  # single for sentence pair label; 0, 1 or 2
+
+# dropout keep prob for post concat, pre MLP
+apply_dropout = T.bscalar('apply_dropout')  # dropout.{APPLY_DROPOUT|NO_DROPOUT}
+keep_prob = theano.shared(opts.keep_prob)  # recall 1.0 => noop
+keep_prob = T.cast(keep_prob, 'float32')  # shared weirdity, how to set in init (?)
 
 # keep track of different "layers" that handle their own gradients.
 # includes rnns, final concat & softmax and, potentially, special handling for
@@ -140,7 +155,7 @@ layers.extend(rnns)
 # concat final states of rnns, do a final linear combo and apply softmax for prediction.
 final_rnn_states = [rnn.final_state() for rnn in rnns]
 concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim,
-                                        opts.update_fn)
+                                        opts.update_fn, apply_dropout, keep_prob)
 layers.append(concat_with_softmax)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
@@ -159,17 +174,17 @@ for layer in layers:
     updates.extend(layer.updates_wrt_cost(total_cost, opts.learning_rate))
 
 log("compiling")
-train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
+train_fn = theano.function(inputs=[apply_dropout, s1_idxs, s2_idxs, actual_y],
                            outputs=[total_cost],
                            updates=updates)
-test_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
+test_fn = theano.function(inputs=[apply_dropout, s1_idxs, s2_idxs, actual_y],
                           outputs=[pred_y, total_cost])
 
 def stats_from_dev_set(stats):
     actuals = []
     predicteds  = []
     for (s1, s2), y in zip(dev_x, dev_y):
-        pred_y, cost = test_fn(s1, s2, [y])
+        pred_y, cost = test_fn(NO_DROPOUT, s1, s2, [y])
         actuals.append(y)
         predicteds.append(pred_y)
         stats.record_dev_cost(cost)
@@ -191,9 +206,9 @@ while epoch != opts.num_epochs:
         flip_s1_s2 = opts.swap_symmetric_examples and util.coin_flip() and \
             util.symmetric_example(y)
         if flip_s1_s2:
-            cost, = train_fn(s2, s1, [y])
+            cost, = train_fn(APPLY_DROPOUT, s2, s1, [y])
         else:
-            cost, = train_fn(s1, s2, [y])
+            cost, = train_fn(APPLY_DROPOUT, s1, s2, [y])
 
         stats.record_training_cost(cost)
         early_stop = False
