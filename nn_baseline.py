@@ -2,6 +2,7 @@
 import argparse
 from concat_with_softmax import ConcatWithSoftmax
 from dropout import APPLY_DROPOUT, NO_DROPOUT
+from embeddings import Embeddings, TiedEmbeddings
 from gru_rnn import GruRnn
 import itertools
 import json
@@ -11,7 +12,6 @@ from simple_rnn import SimpleRnn
 from sklearn.metrics import confusion_matrix
 from stats import Stats
 import sys
-from tied_embeddings import TiedEmbeddings
 import time
 import theano
 import theano.tensor as T
@@ -112,20 +112,6 @@ keep_prob = T.cast(keep_prob, 'float32')  # shared weirdity, how to set in init 
 # tied embeddings
 layers = []
 
-# helper to build an rnn across s1 or s2.
-# bidirectional passes are made with explicitly reversed idxs
-h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
-rnn_fn = globals().get(opts.rnn_type)
-if rnn_fn is None:
-    raise Exception("unknown rnn type [%s]" % opts.rnn_type)
-update_fn = globals().get(opts.update_fn)
-if update_fn is None:
-    raise Exception("unknown update function [%s]" % opts.update_fn)
-def rnn(name, idxs=None, sequence_embeddings=None):
-    return rnn_fn(name, vocab.size(), opts.embedding_dim, opts.hidden_dim, opts,
-                  update_fn, h0, idxs=idxs, sequence_embeddings=sequence_embeddings)
-rnns = None
-
 # decide set of sequence idxs we'll be processing. there will always the two
 # for the forward passes over s1 and s2 and, optionally, two more for the
 # reverse pass over s1 & s2 in the bidirectional case.
@@ -135,22 +121,38 @@ if opts.bidirectional:
     idxs.extend([s1_idxs[::-1], s2_idxs[::-1]])
     names.extend(["s1b", "s2b"])
 
-# build rnns. we know we will build an rnn for each sequence idx but depending
+# build embedding layers. we know we will build an rnn for each sequence idx but depending
 # on whether we are using tied embeddings there will be either 1 global embedding matrix
 # (whose gradients are managed by TiedEmbeddings) or there will be 1 embeddings matrix per
-# rnn (whose gradients are managed by the rnn itself)
+# rnn (whose gradients are managed by the rnn itself). we build one embedding obj per
+# element in idxs
+embeddings = None
+def build_embedding(idxs=None, sequence_embeddings=None):
+    return Embeddings(vocab.size(), opts.embedding_dim, idxs=idxs,
+                      sequence_embeddings=sequence_embeddings)
 if opts.tied_embeddings:
     # make shared tied embeddings helper
     tied_embeddings = TiedEmbeddings(vocab.size(), opts.embedding_dim,
                                      opts.initial_embeddings)
     layers.append(tied_embeddings)
-    # build an rnn per idx slices. rnn don't maintain their own embeddings in this case.
+    # embeddings rnn per idx slices. rnn don't maintain their own embeddings in this case.
     slices = tied_embeddings.slices_for_idxs(idxs)
-    rnns = [rnn(n, sequence_embeddings=s) for n, s in zip(names, slices)]
+    embeddings = [build_embedding(sequence_embeddings=s) for s in slices]
 else:
     # no tied embeddings; each rnn handles it's own weights
-    rnns = [rnn(n, idxs=i) for n, i in zip(names, idxs)]
-layers.extend(rnns)
+    embeddings = [build_embedding(idxs=i) for i in idxs]
+layers.extend(embeddings)
+
+# build rnns over these embedded sequences
+h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
+rnn_fn = globals().get(opts.rnn_type)
+if rnn_fn is None:
+    raise Exception("unknown rnn type [%s]" % opts.rnn_type)
+update_fn = globals().get(opts.update_fn)
+if update_fn is None:
+    raise Exception("unknown update function [%s]" % opts.update_fn)
+rnns = [rnn_fn("", opts.embedding_dim, opts.hidden_dim, opts, update_fn, h0,
+               inputs=e.embeddings()) for e in embeddings]
 
 # concat final states of rnns, do a final linear combo and apply softmax for prediction.
 final_rnn_states = [rnn.final_state() for rnn in rnns]
