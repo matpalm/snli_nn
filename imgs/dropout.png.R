@@ -10,4 +10,6 @@ summary(df)
 ggplot(df, aes(n, dev_acc)) + 
   geom_point(aes(color=keep_prob)) + 
   geom_smooth(aes(color=keep_prob)) + 
-  labs(title="dropout") + ylim(0, 1)
+  labs(title="dropout") 
+
+#+ ylim(0, 1)

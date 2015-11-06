@@ -72,9 +72,7 @@ actual_y = T.ivector('y')  # single for sentence pair label; 0, 1 or 2
 # tied embeddings
 layers = []
 
-# helper to build rnns. 
-# rnns over s2 have an additional context provided (from output of s1)
-# rnns over s1 have context=None
+# build a bidirectional set of grus over both s1 and s2
 update_fn = globals().get(opts.update_fn)
 if update_fn is None:
     raise Exception("unknown update function [%s]" % opts.update_fn)

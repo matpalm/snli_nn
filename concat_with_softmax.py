@@ -10,6 +10,7 @@ class ConcatWithSoftmax(object):
                  training=None, keep_prob=None):
         self.input = T.concatenate(states)
         if training is not None:
+            assert keep_prob is None
             self.input = dropout(self.input, training, keep_prob)
         input_size = len(states) * n_hidden_previous
 
