@@ -90,6 +90,7 @@ def norms(layers):
                 pass  # no get_value (?)
     return dict(norms)
 
+# TODO: there is http://www.deeplearning.net/software/theano/library/gradient.html#theano.gradient.grad_clip for this (apparently)
 def _clip(gradient, rescale=5.0):
     grad_norm = gradient.norm(L=2)
     rescaling_factor = rescale / T.maximum(rescale, grad_norm)

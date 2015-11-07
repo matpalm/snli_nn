@@ -1,3 +1,4 @@
+from embeddings import Embeddings
 from gru_rnn import *
 import numpy as np
 import util
@@ -6,13 +7,18 @@ import theano.tensor as T
 from updates import vanilla, rmsprop
 
 class BidirectionalGruRnn(object):
-    def __init__(self, name, n_in, n_embedding, n_hidden, opts, update_fn, h0, idxs):
+    def __init__(self, name, vocab_size, embedding_dim, hidden_dim, opts, update_fn, h0,
+                 idxs):
         self.name_ = name
+
+        def build_gru(name, idxs):
+            embeddings = Embeddings(vocab_size, embedding_dim, idxs=idxs)
+            return GruRnn(name, embedding_dim, hidden_dim, opts, update_fn, h0,
+                          embeddings.embeddings())
+
         # TODO: support tied embeddings again
-        self.forward_gru = GruRnn(("f_%s" % name), n_in, n_embedding, n_hidden, opts, 
-                                  update_fn, h0, idxs=idxs)
-        self.backwards_gru = GruRnn(("f_%s" % name), n_in, n_embedding, n_hidden, opts, 
-                                    update_fn, h0, idxs=idxs[::-1])
+        self.forward_gru = build_gru(name=("f_%s" % name), idxs=idxs)
+        self.backwards_gru = build_gru(name=("b_%s" % name), idxs=idxs[::-1])
     
     def name(self):
         return self.name_
