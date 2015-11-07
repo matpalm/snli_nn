@@ -5,26 +5,36 @@ from updates import vanilla, rmsprop
 import util
 
 class SimpleRnn(object):
-    def __init__(self, name, input_dim, hidden_dim, opts, update_fn, h0, inputs):
+    def __init__(self, name, input_dim, hidden_dim, opts, update_fn, h0, inputs,
+                 context=None, context_dim=None):
         self.name_ = name
         self.update_fn = update_fn
         self.h0 = h0
-        self.inputs = inputs
+        self.inputs = inputs    # input sequence
+        self.context = context  # additional context to add at each timestep of input
 
         # hidden -> hidden
-        self.Whh = util.sharedMatrix(hidden_dim, hidden_dim, 'Whh', orthogonal_init=True)
+        self.Uh = util.sharedMatrix(hidden_dim, hidden_dim, 'Uh', orthogonal_init=True)
 
         # embedded input -> hidden
-        self.Whe = util.sharedMatrix(hidden_dim, input_dim, 'Whe', orthogonal_init=True)
+        self.Wh = util.sharedMatrix(hidden_dim, input_dim, 'Wh', orthogonal_init=True)
+
+        # context -> hidden (if applicable)
+        if self.context:
+            self.Whc = util.sharedMatrix(hidden_dim, context_dim, 'Wch',
+                                         orthogonal_init=True)
 
         # bias
-        self.Wb = util.shared(util.zeros((hidden_dim,)), 'Wb')
+        self.bh = util.shared(util.zeros((hidden_dim,)), 'bh')
 
     def name(self):
         return self.name_
 
     def dense_params(self):
-        return [self.Whh, self.Whe, self.Wb]
+        params = [self.Uh, self.Wh, self.bh]
+        if self.context:
+            params.append(self.Whc)
+        return params
 
     def params_for_l2_penalty(self):
         return self.dense_params()
@@ -34,9 +44,12 @@ class SimpleRnn(object):
         return self.update_fn(self.dense_params(), gradients, learning_rate)
 
     def recurrent_step(self, inp, h_t_minus_1):
-        h_t = T.tanh(T.dot(self.Whh, h_t_minus_1) +
-                     T.dot(self.Whe, inp) +
-                     self.Wb)
+        h_t = (T.dot(self.Uh, h_t_minus_1) +
+               T.dot(self.Wh, inp) +
+               self.bh)
+        if self.context:
+            h_t += T.dot(self.Whc, self.context)
+        h_t = T.tanh(h_t)
         return [h_t, h_t]
 
     def all_states(self):

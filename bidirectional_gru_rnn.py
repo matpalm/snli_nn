@@ -32,17 +32,22 @@ class BidirectionalGruRnn(object):
             self.backwards_gru.params_for_l2_penalty()
 
     def updates_wrt_cost(self, cost, learning_rate):
+        print "BIDIR UPDATES"
         return self.forward_gru.updates_wrt_cost(cost, learning_rate) + \
             self.backwards_gru.updates_wrt_cost(cost, learning_rate)
 
     # return hidden activations for recurrent step (as a 2-tuple)
-    # [(f_s1, b_sn), (f_s2, b_sn-1), ...]
-    def all_hidden_states(self):
-        forwards_ht = self.forward_gru.all_hidden_states()
-        backwards_ht = self.backwards_gru.all_hidden_states()
-        return zip(forwards_ht, backwards_ht[::-1])
+    # [f_s1 ++ b_sn, f_s2 ++ b_sn-1, ...]
+    def all_states(self):
+        forwards_ht = self.forward_gru.all_states()
+        backwards_ht = self.backwards_gru.all_states()
+        all_states, _ = theano.scan(fn=lambda f, b: T.concatenate([f, b]),
+                                    sequences=[forwards_ht, backwards_ht],
+                                    outputs_info=[None])
+        return all_states
 
     # [final forward state, final backwards state]
     def final_states(self):
-        return [self.forward_gru.final_state(), self.backwards_gru.final_state()]
+        return T.concatenate([self.forward_gru.final_state(),
+                              self.backwards_gru.final_state()])
 

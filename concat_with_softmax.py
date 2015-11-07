@@ -6,16 +6,22 @@ import util
 from updates import vanilla, rmsprop
 
 class ConcatWithSoftmax(object):
-    def __init__(self, states, n_labels, n_hidden_previous, update_fn,
+    def __init__(self, inp, n_labels, n_hidden_previous, update_fn,
                  training=None, keep_prob=None):
-        self.input = T.concatenate(states)
+        if type(inp) == list:
+            self.input = T.concatenate(inp)
+            input_size = len(inp) * n_hidden_previous
+        else:
+            self.input = inp
+            input_size = n_hidden_previous
+
         if training is not None:
             assert keep_prob is not None
             self.input = dropout(self.input, training, keep_prob)
-        input_size = len(states) * n_hidden_previous
 
         # input -> hidden (sized somwhere between size of input & softmax)
         n_hidden = int(math.sqrt(input_size * n_labels))
+        print "concat sizing %s -> %s -> %s" % (input_size, n_hidden, n_labels)
         self.Wih = util.sharedMatrix(input_size, n_hidden, 'Wih')
         self.bh = util.shared(util.zeros((1, n_hidden)), 'bh')
         # hidden -> softmax
@@ -36,6 +42,7 @@ class ConcatWithSoftmax(object):
         return self.dense_params()
 
     def updates_wrt_cost(self, cost, learning_rate):
+        print "CONCAT GRADS"
         gradients = util.clipped(T.grad(cost=cost, wrt=self.dense_params()))
         return self.update_fn(self.dense_params(), gradients, learning_rate)
 

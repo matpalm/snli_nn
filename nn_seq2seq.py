@@ -2,7 +2,7 @@
 import argparse
 from bidirectional_gru_rnn import BidirectionalGruRnn
 from concat_with_softmax import ConcatWithSoftmax
-#from gru_rnn import GruRnn
+from gru_rnn import GruRnn
 import itertools
 import json
 import numpy as np
@@ -11,7 +11,6 @@ from simple_rnn import SimpleRnn
 from sklearn.metrics import confusion_matrix
 from stats import Stats
 import sys
-from tied_embeddings import TiedEmbeddings
 import time
 import theano
 import theano.tensor as T
@@ -72,7 +71,7 @@ actual_y = T.ivector('y')  # single for sentence pair label; 0, 1 or 2
 # tied embeddings
 layers = []
 
-# build a bidirectional set of grus over both s1 and s2
+# build a bidirectional rnn of grus over s1
 update_fn = globals().get(opts.update_fn)
 if update_fn is None:
     raise Exception("unknown update function [%s]" % opts.update_fn)
@@ -80,31 +79,41 @@ if update_fn is None:
 h0 = theano.shared(np.zeros(opts.hidden_dim, dtype='float32'), name='h0', borrow=True)
 s1_bidir = BidirectionalGruRnn('s1_bidir', vocab.size(), opts.embedding_dim, 
                                opts.hidden_dim, opts, update_fn, h0, s1_idxs)
-s2_bidir = BidirectionalGruRnn('s1_bidir', vocab.size(), opts.embedding_dim, 
+layers.append(s1_bidir)
+
+# build another pair of bidirectional rnn grus over s2
+s2_bidir = BidirectionalGruRnn('s2_bidir', vocab.size(), opts.embedding_dim,
                                opts.hidden_dim, opts, update_fn, h0, s2_idxs)
-layers.extend([s1_bidir, s2_bidir])
+layers.append(s2_bidir)
 
-# collect final states of both bidir rnns.
-final_states = s1_bidir.final_states()  # 2 vectors
-final_states.extend(s2_bidir.final_states())  # another 2 vectors
+# build a unidirectional gru rnn over the bidirectional net over s2 and have it
+# additionally conditioned on the context dervied from the networks over s1
+s2_decoder = GruRnn(name='s2_decoder',
+                    input_dim=2*opts.hidden_dim, hidden_dim=opts.hidden_dim,
+                    opts=opts, update_fn=update_fn, h0=h0,
+                    inputs=s2_bidir.all_states(),
+                    context=s1_bidir.final_states(), context_dim=2*opts.hidden_dim)
+layers.append(s2_decoder)
 
-# finally concat s2 states and pass up through MLP to softmaxs
-# TODO: add dropout (?)
-concat_with_softmax = ConcatWithSoftmax(final_states, NUM_LABELS, opts.hidden_dim, 
-                                        opts.update_fn)
+# use final state of this decoder to feed into the final MLP
+concat_with_softmax = ConcatWithSoftmax(s2_decoder.final_state(), NUM_LABELS,
+                                        opts.hidden_dim, opts.update_fn)
 layers.append(concat_with_softmax)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
 # calc l2_sum across all params
+log(">l2 params")
 params = [l.params_for_l2_penalty() for l in layers]
 l2_sum = sum([(p**2).sum() for p in itertools.chain(*params)])
 
 # calculate cost ; xent + l2 penalty
+log("calc cost")
 cross_entropy_cost = T.mean(T.nnet.categorical_crossentropy(prob_y, actual_y))
 l2_cost = opts.l2_penalty * l2_sum
 total_cost = cross_entropy_cost + l2_cost
 
 # calculate updates
+log("calc updates")
 updates = []
 for layer in layers:
     updates.extend(layer.updates_wrt_cost(total_cost, opts.learning_rate))

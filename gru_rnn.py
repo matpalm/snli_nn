@@ -5,16 +5,23 @@ import theano.tensor as T
 from updates import vanilla, rmsprop
 
 class GruRnn(object):
-    def __init__(self, name, input_dim, hidden_dim, opts, update_fn, h0, inputs):
+    def __init__(self, name, input_dim, hidden_dim, opts, update_fn, h0, inputs,
+                 context=None, context_dim=None):
         self.name_ = name
         self.update_fn = update_fn
         self.h0 = h0
-        self.inputs = inputs
+        self.inputs = inputs    # input sequence
+        self.context = context  # additional context to add at each timestep of input
 
         # params for standard recurrent step
         self.Uh = util.sharedMatrix(hidden_dim, hidden_dim, 'Uh', orthogonal_init=True)
         self.Wh = util.sharedMatrix(hidden_dim, input_dim, 'Wh', orthogonal_init=True)
         self.bh = util.shared(util.zeros((hidden_dim,)), 'bh')
+
+        # params for context; if applicable
+        if self.context:
+            self.Wch = util.sharedMatrix(hidden_dim, context_dim, 'Wch',
+                                         orthogonal_init=True)
 
         # params for reset gate; initial bias to not reset
         self.Ur = util.sharedMatrix(hidden_dim, hidden_dim, 'Ur', orthogonal_init=True)
@@ -30,14 +37,18 @@ class GruRnn(object):
         return self.name_
 
     def dense_params(self):
-        return [self.Uh, self.Wh, self.bh, 
-                self.Ur, self.Wr, self.br, 
-                self.Uz, self.Wz, self.bz]
+        params =[self.Uh, self.Wh, self.bh,
+                 self.Ur, self.Wr, self.br,
+                 self.Uz, self.Wz, self.bz]
+        if self.context:
+            params.append(self.Wch)
+        return params
 
     def params_for_l2_penalty(self):
         return self.dense_params()
 
     def updates_wrt_cost(self, cost, learning_rate):
+        print "GRU UPDATES"
         gradients = util.clipped(T.grad(cost=cost, wrt=self.dense_params()))
         return self.update_fn(self.dense_params(), gradients, learning_rate)
 
@@ -48,9 +59,12 @@ class GruRnn(object):
                            T.dot(self.Wr, inp) +
                            self.br)
         # candidate hidden state
-        h_t_candidate = T.tanh(r * T.dot(self.Uh, h_t_minus_1) +
-                               T.dot(self.Wh, inp) +
-                               self.bh)
+        h_t_candidate = (r * T.dot(self.Uh, h_t_minus_1) +
+                         T.dot(self.Wh, inp) +
+                         self.bh)
+        if self.context:
+            h_t_candidate += T.dot(self.Wch, self.context)
+        h_t_candidate = T.tanh(h_t_candidate)
         # carry gate; how much of h_t_minus_1 will we take with h_candidate?
         z = T.nnet.sigmoid(T.dot(self.Uz, h_t_minus_1) +
                            T.dot(self.Wz, inp) +
