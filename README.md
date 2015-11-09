@@ -140,11 +140,13 @@ better so will continue with gru by default
 ## using glove pretrained
 
 ```
-# convert glove embeddings (based on vocab)
+# convert glove embeddings (based on vocab) 
+# see appendix on making vocab.tsv
 time ./precompute_embeddings.py \
  --vocab vocab.tsv \
- --glove-data glove.6B.300d.txt \
- --npy snli_glove.npy
+ --glove-data glove/glove.6B.300d.txt \
+ --npy glove/snli_glove.npy \
+ --random-projection-dimensionality 100
 
 # run with / without initial embeddings
 export C="--bidirectional --tied-embeddings --embedding-dim=300"

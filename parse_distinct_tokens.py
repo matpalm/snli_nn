@@ -2,20 +2,14 @@
 from collections import Counter
 import json
 import sys
-
-
-def tokens_in_parse(parse):
-    for token in parse.split(" "):
-        if token != "(" and token != ")":
-            yield token.lower()
-
+from tokenise_parse import *
 
 freqs = Counter()
 for line in sys.stdin:
     d = json.loads(line)
-    for token in tokens_in_parse(d['sentence1_binary_parse']):
+    for token in tokens_for(d, 1, 'PARSE_WITH_OPEN_CLOSE_TAGS'):
         freqs[token] += 1
-    for token in tokens_in_parse(d['sentence2_binary_parse']):
+    for token in tokens_for(d, 2, 'PARSE_WITH_OPEN_CLOSE_TAGS'):
         freqs[token] += 1
 for token, freq in freqs.iteritems():
     print "%s\t%s" % (token, freq)
