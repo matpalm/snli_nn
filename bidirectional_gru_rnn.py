@@ -31,10 +31,10 @@ class BidirectionalGruRnn(object):
         return self.forward_gru.params_for_l2_penalty() + \
             self.backwards_gru.params_for_l2_penalty()
 
-    def updates_wrt_cost(self, cost, learning_rate):
+    def updates_wrt_cost(self, cost, learning_opts):
         print "BIDIR UPDATES"
-        return self.forward_gru.updates_wrt_cost(cost, learning_rate) + \
-            self.backwards_gru.updates_wrt_cost(cost, learning_rate)
+        return self.forward_gru.updates_wrt_cost(cost, learning_opts) + \
+            self.backwards_gru.updates_wrt_cost(cost, learning_opts)
 
     # return hidden activations for recurrent step (as a 2-tuple)
     # [f_s1 ++ b_sn, f_s2 ++ b_sn-1, ...]

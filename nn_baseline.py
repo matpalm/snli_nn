@@ -8,6 +8,7 @@ import itertools
 import json
 import numpy as np
 import os
+import random
 from simple_rnn import SimpleRnn
 from sklearn.metrics import confusion_matrix
 from stats import Stats
@@ -17,7 +18,7 @@ import theano
 import theano.tensor as T
 import tokenise_parse
 import util
-from updates import vanilla, rmsprop
+from updates import *
 from vocab import Vocab
 
 parser = argparse.ArgumentParser()
@@ -34,19 +35,21 @@ parser.add_argument("--num-epochs", default=-1, type=int,
 parser.add_argument("--max-run-time-sec", default=-1, type=int,
                     help='max secs to run before early stopping. -1 => dont early stop')
 parser.add_argument('--learning-rate', default=0.01, type=float, help='learning rate')
+parser.add_argument('--momentum', default=0., type=float,
+                    help='momentum (when applicable)')
 parser.add_argument('--update-fn', default='vanilla',
-                    help='vanilla (sgd) or rmsprop. not applied to embeddings')
-parser.add_argument('--embedding-dim', default=100, type=int,
-                    help='embedding node dimensionality')
+                    help='vanilla (sgd), momentum or rmsprop. not applied to embeddings')
 parser.add_argument('--hidden-dim', default=50, type=int,
                     help='hidden node dimensionality')
 parser.add_argument('--bidirectional', action='store_true',
                     help='whether to build bidirectional rnns for s1 & s2')
+parser.add_argument('--embedding-dim', default=100, type=int,
+                    help='embedding node dimensionality')
 parser.add_argument('--tied-embeddings', action='store_true',
                     help='whether to tie embeddings for each rnn')
 parser.add_argument('--initial-embeddings',
                     help='initial embeddings npy file. for now only applicable if'
-                         ' --tied-embeddings. requires --embedding-vocab')
+                         ' --tied-embeddings. requires --vocab-file')
 parser.add_argument('--vocab-file',
                     help='vocab (token -> idx) for embeddings,'
                          ' required if using --initial-embeddings')
@@ -157,7 +160,7 @@ rnns = [rnn_fn("", opts.embedding_dim, opts.hidden_dim, opts, update_fn, h0,
 # concat final states of rnns, do a final linear combo and apply softmax for prediction.
 final_rnn_states = [rnn.final_state() for rnn in rnns]
 concat_with_softmax = ConcatWithSoftmax(final_rnn_states, NUM_LABELS, opts.hidden_dim,
-                                        opts.update_fn, apply_dropout, keep_prob)
+                                        update_fn, apply_dropout, keep_prob)
 layers.append(concat_with_softmax)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
@@ -173,7 +176,7 @@ total_cost = cross_entropy_cost + l2_cost
 # calculate updates
 updates = []
 for layer in layers:
-    updates.extend(layer.updates_wrt_cost(total_cost, opts.learning_rate))
+    updates.extend(layer.updates_wrt_cost(total_cost, opts))
 
 log("compiling")
 train_fn = theano.function(inputs=[apply_dropout, s1_idxs, s2_idxs, actual_y],
@@ -200,9 +203,10 @@ log("training")
 epoch = 0
 training_early_stop_time = opts.max_run_time_sec + time.time()
 stats = Stats(os.path.basename(__file__), opts)
+egs = zip(train_x, train_y)
 while epoch != opts.num_epochs:
-    for (s1, s2), y in zip(train_x, train_y):
-
+    random.shuffle(egs)
+    for (s1, s2), y in egs:
         # we may choose to swap s1/s2 for symmetric examples; i.e. contradictions
         # and neutral statements.
         flip_s1_s2 = opts.swap_symmetric_examples and util.coin_flip() and \

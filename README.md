@@ -231,8 +231,8 @@ first version of seq2seq no better than simple. (thought only a step to attentio
 
 # TODOS
 
+* retry s2s with glove & no training of embeddings
 * decaying lr; eg start at 1.0 then decay over time (eg 'reasoning about entailment')
-* more simple moemntum
 * larger MLP? (deeper and larger hidden layer) ?
 * sanity check swap_symmetric again; if only with neutral egs
 * unidir on s2 attending back to bidir run over s1; then just MLP on s2 output

@@ -3,7 +3,6 @@ import math
 import theano
 import theano.tensor as T
 import util
-from updates import vanilla, rmsprop
 
 class ConcatWithSoftmax(object):
     def __init__(self, inp, n_labels, n_hidden_previous, update_fn,
@@ -19,6 +18,8 @@ class ConcatWithSoftmax(object):
             assert keep_prob is not None
             self.input = dropout(self.input, training, keep_prob)
 
+        self.update_fn = update_fn
+
         # input -> hidden (sized somwhere between size of input & softmax)
         n_hidden = int(math.sqrt(input_size * n_labels))
         print "concat sizing %s -> %s -> %s" % (input_size, n_hidden, n_labels)
@@ -27,10 +28,6 @@ class ConcatWithSoftmax(object):
         # hidden -> softmax
         self.Whs = util.sharedMatrix(n_hidden, n_labels, 'Whs')
         self.bs = util.shared(util.zeros((1, n_labels)), 'bs')
-
-        self.update_fn = globals().get(update_fn)
-        if self.update_fn is None:
-            raise Exception("no such update function", update_fn)
 
     def name(self):
         return "concat_with_softmax"
@@ -41,10 +38,10 @@ class ConcatWithSoftmax(object):
     def params_for_l2_penalty(self):
         return self.dense_params()
 
-    def updates_wrt_cost(self, cost, learning_rate):
+    def updates_wrt_cost(self, cost, learning_opts):
         print "CONCAT GRADS"
         gradients = util.clipped(T.grad(cost=cost, wrt=self.dense_params()))
-        return self.update_fn(self.dense_params(), gradients, learning_rate)
+        return self.update_fn(self.dense_params(), gradients, learning_opts)
 
     def prob_pred(self):
         hidden = T.nnet.sigmoid(T.dot(self.input, self.Wih) + self.bh)

@@ -102,3 +102,5 @@ def clipped(gradients, rescale=5.0):
     else:
         return _clip(gradients, rescale)
 
+def zeros_in_the_shape_of(p):
+    return theano.shared(np.zeros(p.get_value().shape, dtype=p.get_value().dtype))

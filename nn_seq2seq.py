@@ -7,6 +7,7 @@ import itertools
 import json
 import numpy as np
 import os
+import random
 from simple_rnn import SimpleRnn
 from sklearn.metrics import confusion_matrix
 from stats import Stats
@@ -15,7 +16,7 @@ import time
 import theano
 import theano.tensor as T
 import util
-from updates import vanilla, rmsprop
+from updates import *
 from vocab import Vocab
 
 parser = argparse.ArgumentParser()
@@ -32,6 +33,8 @@ parser.add_argument("--num-epochs", default=-1, type=int,
 parser.add_argument("--max-run-time-sec", default=-1, type=int,
                     help='max secs to run before early stopping. -1 => dont early stop')
 parser.add_argument('--learning-rate', default=0.01, type=float, help='learning rate')
+parser.add_argument('--momentum', default=0., type=float,
+                    help='momentum (when applicable)')
 parser.add_argument('--update-fn', default='vanilla',
                     help='vanilla (sgd) or rmsprop. not applied to embeddings')
 parser.add_argument('--embedding-dim', default=100, type=int,
@@ -97,7 +100,7 @@ layers.append(s2_decoder)
 
 # use final state of this decoder to feed into the final MLP
 concat_with_softmax = ConcatWithSoftmax(s2_decoder.final_state(), NUM_LABELS,
-                                        opts.hidden_dim, opts.update_fn)
+                                        opts.hidden_dim, update_fn)
 layers.append(concat_with_softmax)
 prob_y, pred_y = concat_with_softmax.prob_pred()
 
@@ -116,7 +119,7 @@ total_cost = cross_entropy_cost + l2_cost
 log("calc updates")
 updates = []
 for layer in layers:
-    updates.extend(layer.updates_wrt_cost(total_cost, opts.learning_rate))
+    updates.extend(layer.updates_wrt_cost(total_cost, opts))
 
 log("compiling")
 train_fn = theano.function(inputs=[s1_idxs, s2_idxs, actual_y],
@@ -145,8 +148,10 @@ log("training")
 epoch = 0
 training_early_stop_time = opts.max_run_time_sec + time.time()
 stats = Stats(os.path.basename(__file__), opts)
+egs = zip(train_x, train_y)
 while epoch != opts.num_epochs:
-    for (s1, s2), y in zip(train_x, train_y):
+    random.shuffle(egs)
+    for (s1, s2), y in egs:
         cost, = train_fn(s1, s2, [y])
         stats.record_training_cost(cost)
         early_stop = False

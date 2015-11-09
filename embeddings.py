@@ -26,9 +26,10 @@ class Embeddings(object):
             return []
         return [self.sequence_embeddings]
 
-    def updates_wrt_cost(self, cost, learning_rate):
+    def updates_wrt_cost(self, cost, learning_opts):
         if self.using_shared_embeddings:
             return []
+        learning_rate = learning_opts.learning_rate
         gradient = util.clipped(T.grad(cost=cost, wrt=self.sequence_embeddings))
         return [(self.Wx, T.inc_subtensor(self.sequence_embeddings,
                                           -learning_rate * gradient))]
@@ -37,7 +38,10 @@ class Embeddings(object):
         return self.sequence_embeddings
 
 class TiedEmbeddings(object):
-    def __init__(self, n_in, n_embedding, initial_embeddings_file=None):
+    def __init__(self, n_in, n_embedding, initial_embeddings_file=None, train_embeddings=True):
+        if not train_embeddings and initial_embeddings_file is None:
+            print >>sys.stderr, "WARNING: not training embedding without initial embeddings"
+        self.train_embeddings = train_embeddings
         if initial_embeddings_file:
             e = np.load(initial_embeddings_file)
             assert e.shape[0] == n_in, "vocab mismatch size? loaded=%s expected=%s" % (e.shape[0], n_in)
@@ -73,16 +77,21 @@ class TiedEmbeddings(object):
         return "tied_embeddings"
 
     def params_for_l2_penalty(self):
+        if not self.train_embeddings:
+            return []
         # for l2 penalty only check the subset of the embeddings related to a specific
         # example. ie NOT the entire shared_embeddings, most of which has nothing to do
         # with each example.
         return [self.concatenated_sequence_embeddings]
 
-    def updates_wrt_cost(self, cost, learning_rate):
+    def updates_wrt_cost(self, cost, learning_opts):
+        if not self.train_embeddings:
+            return []
         # _one_ update for the embedding matrix; regardless of the number of rnns running
         # over subslices
         gradient = util.clipped(T.grad(cost=cost,
                                        wrt=self.concatenated_sequence_embeddings))
+        learning_rate = learning_opts.learning_rate
         return [(self.shared_embeddings,
                  T.inc_subtensor(self.concatenated_sequence_embeddings,
                                  -learning_rate * gradient))]

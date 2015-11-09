@@ -47,10 +47,10 @@ class GruRnn(object):
     def params_for_l2_penalty(self):
         return self.dense_params()
 
-    def updates_wrt_cost(self, cost, learning_rate):
+    def updates_wrt_cost(self, cost, learning_opts):
         print "GRU UPDATES"
         gradients = util.clipped(T.grad(cost=cost, wrt=self.dense_params()))
-        return self.update_fn(self.dense_params(), gradients, learning_rate)
+        return self.update_fn(self.dense_params(), gradients, learning_opts)
 
     def recurrent_step(self, inp, h_t_minus_1):
         # reset gate; how much will we zero out h_t_minus_1 in our candidate
