@@ -38,20 +38,21 @@ class Embeddings(object):
         return self.sequence_embeddings
 
 class TiedEmbeddings(object):
-    def __init__(self, n_in, n_embedding, initial_embeddings_file=None, train_embeddings=True):
+    def __init__(self, vocab_size, embedding_dim, initial_embeddings_file=None, 
+                 train_embeddings=True):
         if not train_embeddings and initial_embeddings_file is None:
             print >>sys.stderr, "WARNING: not training embedding without initial embeddings"
         self.train_embeddings = train_embeddings
         if initial_embeddings_file:
             e = np.load(initial_embeddings_file)
-            assert e.shape[0] == n_in, "vocab mismatch size? loaded=%s expected=%s" % (e.shape[0], n_in)
+            assert e.shape[0] == vocab_size, "vocab mismatch size? loaded=%s expected=%s" % (e.shape[0], vocab_size)
             # TODO code could handle this but just not wanting --embedding-dim set
             # when using init embeddings
-            assert e.shape[1] == n_embedding, "dimensionality config error. loaded embeddings %s d but --embedding-dim set to %s d" % (e.shape[1], n_embedding)
+            assert e.shape[1] == embedding_dim, "dimensionality config error. loaded embeddings %s d but --embedding-dim set to %s d" % (e.shape[1], embedding_dim)
             assert e.dtype == np.float32, "%s" % e.dtype
             self.shared_embeddings = util.shared(e, 'tied_embeddings')
         else:
-            self.shared_embeddings = util.sharedMatrix(n_in, n_embedding,
+            self.shared_embeddings = util.sharedMatrix(vocab_size, embedding_dim,
                                                        'tied_embeddings',
                                                        orthogonal_init=True)
 
