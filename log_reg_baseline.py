@@ -18,10 +18,9 @@ args = parser.parse_args()
 
 def features_for(eg):
     features = []
-    for token in util.tokens_in_parse(eg['sentence1_binary_parse']):
-        features.append("s1_" + token)
-    for token in util.tokens_in_parse(eg['sentence2_binary_parse']):
-        features.append("s2_" + token)
+    s1_tokens, s2_tokens = util.tokens_in_sentences(eg)
+    for token in s1_tokens: features.append("s1_" + token)
+    for token in s2_tokens: features.append("s2_" + token)
     return features
 
 def load_data(dataset, max_egs=None):
