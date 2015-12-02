@@ -2,6 +2,8 @@
 
 hacking with the Stanford Natural Language Inference corpus http://nlp.stanford.edu/projects/snli/
 
+see also [a version ported to tensorflow](https://github.com/matpalm/snli_nn_tf)
+
 # tldr results
 
 ( all for 100 dev )
