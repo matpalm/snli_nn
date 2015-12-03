@@ -11,7 +11,6 @@ see also [a version ported to tensorflow](https://github.com/matpalm/snli_nn_tf)
 model | dev accuracy
 ----- |  --------
 log_reg_baseline.py | 0.667
-nn_baseline.py (elman) | 0.58
 nn_baseline.py (elman) | 0.684
 nn_baseline.py (gru) | *0.745*
 nn_seq2seq.py (elman) | 0.682
